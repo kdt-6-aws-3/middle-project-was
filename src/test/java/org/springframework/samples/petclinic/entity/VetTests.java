@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.samples.petclinic.entity;
 
 import org.junit.jupiter.api.Test;
@@ -27,15 +28,18 @@ class VetTests {
 
 	@Test
 	void serialization() {
+		Hospital hospital = new Hospital();
+		hospital.setId(1);
+		hospital.setName("Gangnam");
 		Vet vet = new Vet();
-		vet.setFirstName("Zaphod");
-		vet.setLastName("Beeblebrox");
+		vet.setName("Zaphod Beeblebrox");
 		vet.setId(123);
+		vet.setHospital(hospital);
 		@SuppressWarnings("deprecation")
 		Vet other = (Vet) SerializationUtils.deserialize(SerializationUtils.serialize(vet));
-		assertThat(other.getFirstName()).isEqualTo(vet.getFirstName());
-		assertThat(other.getLastName()).isEqualTo(vet.getLastName());
+		assertThat(other.getName()).isEqualTo(vet.getName());
 		assertThat(other.getId()).isEqualTo(vet.getId());
+		assertThat(other.getHospital().getName()).isEqualTo("Gangnam");
 	}
 
 }

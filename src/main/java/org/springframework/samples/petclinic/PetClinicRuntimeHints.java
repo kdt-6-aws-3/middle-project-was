@@ -19,7 +19,8 @@ package org.springframework.samples.petclinic;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
 import org.springframework.samples.petclinic.entity.BaseEntity;
-import org.springframework.samples.petclinic.entity.Person;
+import org.springframework.samples.petclinic.entity.Hospital;
+import org.springframework.samples.petclinic.entity.NamedEntity;
 import org.springframework.samples.petclinic.entity.Vet;
 
 public class PetClinicRuntimeHints implements RuntimeHintsRegistrar {
@@ -27,12 +28,13 @@ public class PetClinicRuntimeHints implements RuntimeHintsRegistrar {
 	@Override
 	public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
 		hints.resources().registerPattern("db/*"); // https://github.com/spring-projects/spring-boot/issues/32654
-		hints.resources().registerPattern("db/*/*"); // nested db/{h2,mysql,postgres}
+		hints.resources().registerPattern("db/*/*"); // nested db/{h2,mysql}
 		hints.resources().registerPattern("messages/*");
 		hints.resources().registerPattern("mysql-default-conf");
 		hints.reflection().registerType(BaseEntity.class, typeHint -> typeHint.withJavaSerialization(true));
-		hints.reflection().registerType(Person.class, typeHint -> typeHint.withJavaSerialization(true));
+		hints.reflection().registerType(NamedEntity.class, typeHint -> typeHint.withJavaSerialization(true));
 		hints.reflection().registerType(Vet.class, typeHint -> typeHint.withJavaSerialization(true));
+		hints.reflection().registerType(Hospital.class, typeHint -> typeHint.withJavaSerialization(true));
 	}
 
 }

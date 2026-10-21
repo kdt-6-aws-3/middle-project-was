@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.samples.petclinic.service;
 
 import java.time.LocalDate;
@@ -29,11 +30,13 @@ import org.springframework.samples.petclinic.exception.ApiValidationException;
 import org.springframework.samples.petclinic.exception.ResourceNotFoundException;
 import org.springframework.samples.petclinic.repository.OwnerRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.Errors;
 
 /**
- * Listing and booking the visits of a pet. Visits are saved through the pet's owner.
+ * Listing, booking, changing and cancelling the visits of a pet. Visits are saved through
+ * the pet's owner.
  */
 @Service
 public class VisitService {
@@ -58,11 +61,7 @@ public class VisitService {
 		Visit visit = new Visit();
 		visit.setDate(request.date());
 		visit.setDescription(request.description());
-		Errors errors = new BeanPropertyBindingResult(visit, "visit");
-		if (!visit.getDate().isAfter(LocalDate.now())) {
-			errors.rejectValue("date", "typeMismatch.visitDate");
-			throw new ApiValidationException(errors);
-		}
+		throwIfNotInFuture(visit);
 
 		owner.addVisit(petId, visit);
 		Owner saved = this.owners.save(owner);
@@ -73,6 +72,41 @@ public class VisitService {
 			.findFirst()
 			.orElseThrow();
 		return VisitDetails.from(created);
+	}
+
+	/**
+	 * Changes the date and description of a visit; the same future-date rule as booking
+	 * applies.
+	 */
+	public VisitDetails updateVisit(int ownerId, int petId, int visitId, VisitRequest request) {
+		Owner owner = findOwner(ownerId);
+		Visit visit = findVisit(findPet(owner, petId), visitId);
+
+		Visit changed = new Visit();
+		changed.setDate(request.date());
+		changed.setDescription(request.description());
+		throwIfNotInFuture(changed);
+
+		visit.setDate(changed.getDate());
+		visit.setDescription(changed.getDescription());
+		Owner saved = this.owners.save(owner);
+		return VisitDetails.from(saved.getPet(petId).getVisit(visitId));
+	}
+
+	@Transactional
+	public void deleteVisit(int ownerId, int petId, int visitId) {
+		Owner owner = findOwner(ownerId);
+		Pet pet = findPet(owner, petId);
+		pet.removeVisit(findVisit(pet, visitId));
+		this.owners.save(owner);
+	}
+
+	private static void throwIfNotInFuture(Visit visit) {
+		if (!visit.getDate().isAfter(LocalDate.now())) {
+			Errors errors = new BeanPropertyBindingResult(visit, "visit");
+			errors.rejectValue("date", "typeMismatch.visitDate");
+			throw new ApiValidationException(errors);
+		}
 	}
 
 	private Owner findOwner(int ownerId) {
@@ -86,6 +120,14 @@ public class VisitService {
 			throw new ResourceNotFoundException("Pet " + petId + " not found for owner " + owner.getId());
 		}
 		return pet;
+	}
+
+	private static Visit findVisit(Pet pet, int visitId) {
+		Visit visit = pet.getVisit(visitId);
+		if (visit == null) {
+			throw new ResourceNotFoundException("Visit " + visitId + " not found for pet " + pet.getId());
+		}
+		return visit;
 	}
 
 }

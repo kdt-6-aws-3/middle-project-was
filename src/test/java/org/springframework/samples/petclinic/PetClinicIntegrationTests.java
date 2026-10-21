@@ -19,24 +19,29 @@ package org.springframework.samples.petclinic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
+import java.time.LocalDate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.restclient.RestTemplateBuilder;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
-import org.springframework.samples.petclinic.entity.Owner;
 import org.springframework.samples.petclinic.repository.VetRepository;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT, properties = "logging.level.sql=DEBUG")
 public class PetClinicIntegrationTests {
+
+	private static final Pattern FIRST_ID = Pattern.compile("\"id\":(\\d+)");
 
 	@LocalServerPort
 	int port;
@@ -47,6 +52,20 @@ public class PetClinicIntegrationTests {
 	@Autowired
 	private RestTemplateBuilder builder;
 
+	private RestTemplate template() {
+		return this.builder.baseUri("http://localhost:" + this.port).build();
+	}
+
+	private static int idOf(ResponseEntity<String> response) {
+		Matcher matcher = FIRST_ID.matcher(response.getBody());
+		assertThat(matcher.find()).isTrue();
+		return Integer.parseInt(matcher.group(1));
+	}
+
+	private ResponseEntity<String> send(RequestEntity<?> request) {
+		return template().exchange(request, String.class);
+	}
+
 	@Test
 	void findAll() {
 		vets.findAll();
@@ -55,27 +74,85 @@ public class PetClinicIntegrationTests {
 
 	@Test
 	void ownerDetails() {
-		RestTemplate template = builder.baseUri("http://localhost:" + port).build();
-		ResponseEntity<String> result = template.exchange(RequestEntity.get("/api/owners/1").build(), String.class);
+		ResponseEntity<String> result = send(RequestEntity.get("/api/owners/1").build());
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_JSON);
-		assertThat(result.getBody()).contains("\"lastName\":\"Franklin\"");
+		assertThat(result.getBody()).contains("\"name\":\"김지훈\"").contains("\"phone\":\"000-0000-2001\"");
 	}
 
 	@Test
 	void ownerList() {
-		RestTemplate template = builder.baseUri("http://localhost:" + port).build();
-		ResponseEntity<String> result = template.exchange(RequestEntity.get("/api/owners?lastName=").build(),
-				String.class);
+		ResponseEntity<String> result = send(RequestEntity.get("/api/owners?name=").build());
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody()).contains("\"totalElements\":10");
 	}
 
 	@Test
-	void unknownOwnerIsProblemDetail() {
-		RestTemplate template = builder.baseUri("http://localhost:" + port).build();
+	void vetsIncludeTheirHospital() {
+		ResponseEntity<String> result = send(RequestEntity.get("/api/vets").build());
+		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+		assertThat(result.getBody()).contains("\"hospital\":{\"id\":1,\"name\":\"펫클리닉 강남점\"");
+	}
+
+	@Test
+	void hospitalsAndTheirVets() {
+		assertThat(send(RequestEntity.get("/api/hospitals").build()).getBody()).contains("펫클리닉 부산점");
+		assertThat(send(RequestEntity.get("/api/hospitals/1/vets").build()).getBody()).contains("김민준");
+	}
+
+	/**
+	 * Full create / update / delete cycle against the real schema: the NOT NULL foreign
+	 * keys (pets.owner_id, visits.pet_id) and the missing ON DELETE CASCADE are both
+	 * exercised here.
+	 */
+	@Test
+	void crudCycleOfOwnerPetAndVisit() {
+		String tomorrow = LocalDate.now().plusDays(1).toString();
+
+		ResponseEntity<String> owner = send(RequestEntity.post("/api/owners")
+			.contentType(MediaType.APPLICATION_JSON)
+			.body("{\"name\":\"CRUD Owner\",\"address\":\"Seoul\",\"phone\":\"010-1234-5678\"}"));
+		assertThat(owner.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+		int ownerId = idOf(owner);
+
+		ResponseEntity<String> pet = send(RequestEntity.post("/api/owners/" + ownerId + "/pets")
+			.contentType(MediaType.APPLICATION_JSON)
+			.body("{\"name\":\"Coco\",\"birthDate\":\"2020-01-01\",\"typeId\":1}"));
+		assertThat(pet.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+		int petId = idOf(pet);
+		String visits = "/api/owners/" + ownerId + "/pets/" + petId + "/visits";
+
+		ResponseEntity<String> visit = send(RequestEntity.post(visits)
+			.contentType(MediaType.APPLICATION_JSON)
+			.body("{\"date\":\"" + tomorrow + "\",\"description\":\"checkup\"}"));
+		assertThat(visit.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+		int visitId = idOf(visit);
+
+		ResponseEntity<String> updated = send(RequestEntity.put(visits + "/" + visitId)
+			.contentType(MediaType.APPLICATION_JSON)
+			.body("{\"date\":\"" + tomorrow + "\",\"description\":\"follow-up\"}"));
+		assertThat(updated.getBody()).contains("follow-up");
+
+		assertThat(send(RequestEntity.delete(visits + "/" + visitId).build()).getStatusCode())
+			.isEqualTo(HttpStatus.NO_CONTENT);
+		assertThat(send(RequestEntity.get(visits).build()).getBody()).isEqualTo("[]");
+
+		// a second visit stays, so deleting the owner must also delete pet and visit
+		send(RequestEntity.post(visits)
+			.contentType(MediaType.APPLICATION_JSON)
+			.body("{\"date\":\"" + tomorrow + "\",\"description\":\"again\"}"));
+		assertThat(send(RequestEntity.delete("/api/owners/" + ownerId).build()).getStatusCode())
+			.isEqualTo(HttpStatus.NO_CONTENT);
+
 		HttpClientErrorException ex = catchThrowableOfType(HttpClientErrorException.class,
-				() -> template.exchange(RequestEntity.get("/api/owners/99999").build(), String.class));
+				() -> send(RequestEntity.get("/api/owners/" + ownerId).build()));
+		assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+	}
+
+	@Test
+	void unknownOwnerIsProblemDetail() {
+		HttpClientErrorException ex = catchThrowableOfType(HttpClientErrorException.class,
+				() -> send(RequestEntity.get("/api/owners/99999").build()));
 		assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
 		assertThat(ex.getResponseHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_PROBLEM_JSON);
 		assertThat(ex.getResponseBodyAsString()).contains("Owner 99999 not found");
@@ -83,20 +160,18 @@ public class PetClinicIntegrationTests {
 
 	@Test
 	void pagesAreNotServed() {
-		RestTemplate template = builder.baseUri("http://localhost:" + port).build();
 		HttpClientErrorException ex = catchThrowableOfType(HttpClientErrorException.class,
-				() -> template.exchange(RequestEntity.get("/").build(), String.class));
+				() -> send(RequestEntity.get("/").build()));
 		assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
 	}
 
 	@Test
 	void healthIsUpAndOtherActuatorEndpointsAreHidden() {
-		RestTemplate template = builder.baseUri("http://localhost:" + port).build();
-		ResponseEntity<String> health = template.exchange(RequestEntity.get("/actuator/health").build(), String.class);
+		ResponseEntity<String> health = send(RequestEntity.get("/actuator/health").build());
 		assertThat(health.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(health.getBody()).contains("\"status\":\"UP\"");
 		HttpClientErrorException ex = catchThrowableOfType(HttpClientErrorException.class,
-				() -> template.exchange(RequestEntity.get("/actuator/env").build(), String.class));
+				() -> send(RequestEntity.get("/actuator/env").build()));
 		assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
 	}
 

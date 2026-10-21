@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.samples.petclinic.service;
 
 import java.time.LocalDate;
@@ -29,11 +30,12 @@ import org.springframework.samples.petclinic.exception.ResourceNotFoundException
 import org.springframework.samples.petclinic.repository.OwnerRepository;
 import org.springframework.samples.petclinic.repository.PetTypeRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.Errors;
 
 /**
- * Adding and editing the pets of an owner. Pets are saved through their owner.
+ * Adding, editing and deleting the pets of an owner. Pets are saved through their owner.
  */
 @Service
 public class PetService {
@@ -86,6 +88,16 @@ public class PetService {
 		existingPet.setType(pet.getType());
 		Owner saved = this.owners.saveAndFlush(owner);
 		return PetDetails.from(saved.getPet(petId));
+	}
+
+	/**
+	 * Deletes the pet together with its visits.
+	 */
+	@Transactional
+	public void deletePet(int ownerId, int petId) {
+		Owner owner = findOwner(ownerId);
+		owner.removePet(findPet(owner, petId));
+		this.owners.save(owner);
 	}
 
 	/**

@@ -45,36 +45,36 @@ class ValidatorTests {
 		return violations.iterator().next();
 	}
 
+	private Owner owner(String name, String phone) {
+		Owner owner = new Owner();
+		owner.setName(name);
+		owner.setAddress("Seoul");
+		owner.setPhone(phone);
+		return owner;
+	}
+
 	@Test
-	void shouldNotValidateWhenFirstNameEmpty() {
+	void shouldValidateOwner() {
+		assertThat(createValidator().validate(owner("Kim", "010-1234-5678"))).isEmpty();
+	}
+
+	@Test
+	void shouldNotValidateWhenNameEmpty() {
 		LocaleContextHolder.setLocale(Locale.ENGLISH);
 
-		Person person = new Person();
-		person.setFirstName("");
-		person.setLastName("smith");
+		Set<ConstraintViolation<Owner>> constraintViolations = createValidator().validate(owner("", "010-1234-5678"));
 
-		Validator validator = createValidator();
-		Set<ConstraintViolation<Person>> constraintViolations = validator.validate(person);
-
-		ConstraintViolation<Person> violation = getOnlyViolation(constraintViolations);
-		assertThat(violation.getPropertyPath()).hasToString("firstName");
+		ConstraintViolation<Owner> violation = getOnlyViolation(constraintViolations);
+		assertThat(violation.getPropertyPath()).hasToString("name");
 		assertThat(violation.getMessage()).isEqualTo("must not be blank");
 	}
 
 	@Test
-	void shouldNotValidateWhenLastNameEmpty() {
-		LocaleContextHolder.setLocale(Locale.ENGLISH);
+	void shouldNotValidateWhenPhoneHasNoHyphens() {
+		Set<ConstraintViolation<Owner>> constraintViolations = createValidator().validate(owner("Kim", "01012345678"));
 
-		Person person = new Person();
-		person.setFirstName("George");
-		person.setLastName("");
-
-		Validator validator = createValidator();
-		Set<ConstraintViolation<Person>> constraintViolations = validator.validate(person);
-
-		ConstraintViolation<Person> violation = getOnlyViolation(constraintViolations);
-		assertThat(violation.getPropertyPath()).hasToString("lastName");
-		assertThat(violation.getMessage()).isEqualTo("must not be blank");
+		ConstraintViolation<Owner> violation = getOnlyViolation(constraintViolations);
+		assertThat(violation.getPropertyPath()).hasToString("phone");
 	}
 
 }

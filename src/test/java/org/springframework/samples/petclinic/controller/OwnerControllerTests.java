@@ -23,6 +23,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -70,8 +71,7 @@ class OwnerControllerTests {
 	private static final int TEST_OWNER_ID = 1;
 
 	private static final String VALID_OWNER = """
-			{"firstName": "Joe", "lastName": "Bloggs", "address": "123 Caramel Street",
-			 "city": "London", "telephone": "1316761638"}""";
+			{"name": "Joe Bloggs", "address": "123 Caramel Street", "phone": "010-1234-5678"}""";
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -79,17 +79,17 @@ class OwnerControllerTests {
 	@MockitoBean
 	private OwnerRepository owners;
 
+	private Owner george;
+
 	private Owner george() {
 		Owner george = new Owner();
 		george.setId(TEST_OWNER_ID);
-		george.setFirstName("George");
-		george.setLastName("Franklin");
+		george.setName("George Franklin");
 		george.setAddress("110 W. Liberty St.");
-		george.setCity("Madison");
-		george.setTelephone("6085551023");
+		george.setPhone("000-0000-2001");
 		Pet max = new Pet();
 		PetType dog = new PetType();
-		dog.setId(2);
+		dog.setId(1);
 		dog.setName("dog");
 		max.setType(dog);
 		max.setName("Max");
@@ -106,14 +106,14 @@ class OwnerControllerTests {
 
 	@BeforeEach
 	void setup() {
-		Owner george = george();
-		given(this.owners.findByLastNameStartingWith(eq("Franklin"), any(Pageable.class)))
-			.willReturn(new PageImpl<>(List.of(george), PageRequest.of(0, 5), 1));
-		given(this.owners.findByLastNameStartingWith(eq(""), any(Pageable.class)))
-			.willReturn(new PageImpl<>(List.of(george, new Owner()), PageRequest.of(0, 5), 2));
-		given(this.owners.findByLastNameStartingWith(eq("Unknown"), any(Pageable.class)))
+		this.george = george();
+		given(this.owners.findByNameStartingWith(eq("George"), any(Pageable.class)))
+			.willReturn(new PageImpl<>(List.of(this.george), PageRequest.of(0, 5), 1));
+		given(this.owners.findByNameStartingWith(eq(""), any(Pageable.class)))
+			.willReturn(new PageImpl<>(List.of(this.george, new Owner()), PageRequest.of(0, 5), 2));
+		given(this.owners.findByNameStartingWith(eq("Unknown"), any(Pageable.class)))
 			.willReturn(new PageImpl<>(List.of(), PageRequest.of(0, 5), 0));
-		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
+		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(this.george));
 		given(this.owners.save(any(Owner.class))).willAnswer(invocation -> {
 			Owner owner = invocation.getArgument(0);
 			if (owner.isNew()) {
@@ -124,18 +124,19 @@ class OwnerControllerTests {
 	}
 
 	@Test
-	void findOwnersByLastName() throws Exception {
-		mockMvc.perform(get("/api/owners").param("lastName", "Franklin"))
+	void findOwnersByName() throws Exception {
+		mockMvc.perform(get("/api/owners").param("name", "George"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.content", hasSize(1)))
-			.andExpect(jsonPath("$.content[0].lastName").value("Franklin"))
+			.andExpect(jsonPath("$.content[0].name").value("George Franklin"))
+			.andExpect(jsonPath("$.content[0].phone").value("000-0000-2001"))
 			.andExpect(jsonPath("$.content[0].pets[0]").value("Max"))
 			.andExpect(jsonPath("$.page").value(1))
 			.andExpect(jsonPath("$.totalElements").value(1));
 	}
 
 	@Test
-	void findOwnersWithoutLastNameReturnsAll() throws Exception {
+	void findOwnersWithoutNameReturnsAll() throws Exception {
 		mockMvc.perform(get("/api/owners"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.content", hasSize(2)))
@@ -144,7 +145,7 @@ class OwnerControllerTests {
 
 	@Test
 	void findOwnersNoResultReturnsEmptyContent() throws Exception {
-		mockMvc.perform(get("/api/owners").param("lastName", "Unknown"))
+		mockMvc.perform(get("/api/owners").param("name", "Unknown"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.content", hasSize(0)));
 	}
@@ -153,7 +154,7 @@ class OwnerControllerTests {
 	void findOwnersClampsPageAndSize() throws Exception {
 		mockMvc.perform(get("/api/owners").param("page", "0").param("size", "1000")).andExpect(status().isOk());
 		ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
-		verify(this.owners).findByLastNameStartingWith(eq(""), pageable.capture());
+		verify(this.owners).findByNameStartingWith(eq(""), pageable.capture());
 		assertThat(pageable.getValue().getPageNumber()).isZero();
 		assertThat(pageable.getValue().getPageSize()).isEqualTo(100);
 	}
@@ -162,8 +163,10 @@ class OwnerControllerTests {
 	void showOwner() throws Exception {
 		mockMvc.perform(get("/api/owners/{ownerId}", TEST_OWNER_ID))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.firstName").value("George"))
-			.andExpect(jsonPath("$.telephone").value("6085551023"))
+			.andExpect(jsonPath("$.name").value("George Franklin"))
+			.andExpect(jsonPath("$.address").value("110 W. Liberty St."))
+			.andExpect(jsonPath("$.phone").value("000-0000-2001"))
+			.andExpect(jsonPath("$.firstName").doesNotExist())
 			.andExpect(jsonPath("$.pets[0].name").value("Max"))
 			.andExpect(jsonPath("$.pets[0].birthDate").value("2020-01-01"))
 			.andExpect(jsonPath("$.pets[0].type.name").value("dog"))
@@ -184,24 +187,38 @@ class OwnerControllerTests {
 			.andExpect(status().isCreated())
 			.andExpect(header().string("Location", "/api/owners/99"))
 			.andExpect(jsonPath("$.id").value(99))
-			.andExpect(jsonPath("$.lastName").value("Bloggs"))
+			.andExpect(jsonPath("$.name").value("Joe Bloggs"))
+			.andExpect(jsonPath("$.phone").value("010-1234-5678"))
 			.andExpect(jsonPath("$.pets", hasSize(0)));
+	}
+
+	@Test
+	void createOwnerAcceptsSeoulAreaCode() throws Exception {
+		mockMvc.perform(post("/api/owners").contentType(MediaType.APPLICATION_JSON).content("""
+				{"name": "Joe Bloggs", "address": "Seoul", "phone": "02-123-4567"}""")).andExpect(status().isCreated());
 	}
 
 	@Test
 	void createOwnerWithInvalidFields() throws Exception {
 		String invalid = """
-				{"firstName": "Joe", "lastName": "Bloggs", "address": "", "city": "London",
-				 "telephone": "12345"}""";
+				{"name": "Joe Bloggs", "address": "", "phone": "01012345678"}""";
 		mockMvc.perform(post("/api/owners").contentType(MediaType.APPLICATION_JSON).content(invalid))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.detail").value("Validation failed"))
 			.andExpect(jsonPath("$.errors", hasSize(2)))
 			.andExpect(jsonPath("$.errors[?(@.field == 'address')].code").value("NotBlank"))
-			.andExpect(jsonPath("$.errors[?(@.field == 'telephone')].code").value("Pattern"))
-			.andExpect(jsonPath("$.errors[?(@.field == 'telephone')].message")
-				.value("Telephone must be a 10-digit number"));
+			.andExpect(jsonPath("$.errors[?(@.field == 'phone')].code").value("Pattern"))
+			.andExpect(jsonPath("$.errors[?(@.field == 'phone')].message")
+				.value("Phone number must look like 010-1234-5678"));
 		verify(this.owners, never()).save(any(Owner.class));
+	}
+
+	@Test
+	void createOwnerWithMissingName() throws Exception {
+		mockMvc.perform(post("/api/owners").contentType(MediaType.APPLICATION_JSON).content("""
+				{"address": "Seoul", "phone": "010-1234-5678"}"""))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.errors[?(@.field == 'name')].code").value("NotBlank"));
 	}
 
 	@Test
@@ -217,7 +234,7 @@ class OwnerControllerTests {
 				.content(VALID_OWNER))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.id").value(TEST_OWNER_ID))
-			.andExpect(jsonPath("$.lastName").value("Bloggs"))
+			.andExpect(jsonPath("$.name").value("Joe Bloggs"))
 			.andExpect(jsonPath("$.pets[0].name").value("Max"));
 	}
 
@@ -226,6 +243,18 @@ class OwnerControllerTests {
 		mockMvc
 			.perform(put("/api/owners/{ownerId}", 99999).contentType(MediaType.APPLICATION_JSON).content(VALID_OWNER))
 			.andExpect(status().isNotFound());
+	}
+
+	@Test
+	void deleteOwner() throws Exception {
+		mockMvc.perform(delete("/api/owners/{ownerId}", TEST_OWNER_ID)).andExpect(status().isNoContent());
+		verify(this.owners).delete(this.george);
+	}
+
+	@Test
+	void deleteOwnerNotFound() throws Exception {
+		mockMvc.perform(delete("/api/owners/{ownerId}", 99999)).andExpect(status().isNotFound());
+		verify(this.owners, never()).delete(any(Owner.class));
 	}
 
 }

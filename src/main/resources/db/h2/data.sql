@@ -1,53 +1,132 @@
-INSERT INTO vets VALUES (default, 'James', 'Carter');
-INSERT INTO vets VALUES (default, 'Helen', 'Leary');
-INSERT INTO vets VALUES (default, 'Linda', 'Douglas');
-INSERT INTO vets VALUES (default, 'Rafael', 'Ortega');
-INSERT INTO vets VALUES (default, 'Henry', 'Stevens');
-INSERT INTO vets VALUES (default, 'Sharon', 'Jenkins');
+-- Local/test copy of db/mysql/data.sql (same rows and ids). Keep both in sync.
 
-INSERT INTO specialties VALUES (default, 'radiology');
-INSERT INTO specialties VALUES (default, 'surgery');
-INSERT INTO specialties VALUES (default, 'dentistry');
+-- ==================================================
+-- 1. 병원: 서비스 대상 10곳
+-- ==================================================
+INSERT INTO hospitals (id, hospital_name, address, phone) VALUES
+(1,  '펫클리닉 강남점', '서울특별시 강남구 테스트로 101',   '000-0000-1001'),
+(2,  '펫클리닉 서초점', '서울특별시 서초구 테스트로 102',   '000-0000-1002'),
+(3,  '펫클리닉 송파점', '서울특별시 송파구 테스트로 103',   '000-0000-1003'),
+(4,  '펫클리닉 마포점', '서울특별시 마포구 테스트로 104',   '000-0000-1004'),
+(5,  '펫클리닉 성동점', '서울특별시 성동구 테스트로 105',   '000-0000-1005'),
+(6,  '펫클리닉 수원점', '경기도 수원시 테스트로 106',       '000-0000-1006'),
+(7,  '펫클리닉 성남점', '경기도 성남시 테스트로 107',       '000-0000-1007'),
+(8,  '펫클리닉 인천점', '인천광역시 남동구 테스트로 108',   '000-0000-1008'),
+(9,  '펫클리닉 대전점', '대전광역시 서구 테스트로 109',     '000-0000-1009'),
+(10, '펫클리닉 부산점', '부산광역시 해운대구 테스트로 110', '000-0000-1010');
 
-INSERT INTO vet_specialties VALUES (2, 1);
-INSERT INTO vet_specialties VALUES (3, 2);
-INSERT INTO vet_specialties VALUES (3, 3);
-INSERT INTO vet_specialties VALUES (4, 2);
-INSERT INTO vet_specialties VALUES (5, 1);
+-- ==================================================
+-- 2. 전문 분야
+-- ==================================================
+INSERT INTO specialties (id, specialty_name) VALUES
+(1, '내과'),
+(2, '외과'),
+(3, '피부과'),
+(4, '치과'),
+(5, '영상의학과');
 
-INSERT INTO types VALUES (default, 'cat');
-INSERT INTO types VALUES (default, 'dog');
-INSERT INTO types VALUES (default, 'lizard');
-INSERT INTO types VALUES (default, 'snake');
-INSERT INTO types VALUES (default, 'bird');
-INSERT INTO types VALUES (default, 'hamster');
+-- ==================================================
+-- 3. 수의사: 각 병원에 1명씩 배정
+-- ==================================================
+INSERT INTO vets (id, hospital_id, vet_name) VALUES
+(1,  1,  '김민준'),
+(2,  2,  '이서연'),
+(3,  3,  '박도윤'),
+(4,  4,  '최지우'),
+(5,  5,  '정하준'),
+(6,  6,  '강수아'),
+(7,  7,  '조시우'),
+(8,  8,  '윤하은'),
+(9,  9,  '장예준'),
+(10, 10, '임서윤');
 
-INSERT INTO owners VALUES (default, 'George', 'Franklin', '110 W. Liberty St.', 'Madison', '6085551023');
-INSERT INTO owners VALUES (default, 'Betty', 'Davis', '638 Cardinal Ave.', 'Sun Prairie', '6085551749');
-INSERT INTO owners VALUES (default, 'Eduardo', 'Rodriquez', '2693 Commerce St.', 'McFarland', '6085558763');
-INSERT INTO owners VALUES (default, 'Harold', 'Davis', '563 Friendly St.', 'Windsor', '6085553198');
-INSERT INTO owners VALUES (default, 'Peter', 'McTavish', '2387 S. Fair Way', 'Madison', '6085552765');
-INSERT INTO owners VALUES (default, 'Jean', 'Coleman', '105 N. Lake St.', 'Monona', '6085552654');
-INSERT INTO owners VALUES (default, 'Jeff', 'Black', '1450 Oak Blvd.', 'Monona', '6085555387');
-INSERT INTO owners VALUES (default, 'Maria', 'Escobito', '345 Maple St.', 'Madison', '6085557683');
-INSERT INTO owners VALUES (default, 'David', 'Schroeder', '2749 Blackhawk Trail', 'Madison', '6085559435');
-INSERT INTO owners VALUES (default, 'Carlos', 'Estaban', '2335 Independence La.', 'Waunakee', '6085555487');
+-- ==================================================
+-- 4. 수의사별 전문 분야
+-- 한 수의사의 복수 전문 분야 및 전문 분야 미등록 사례 포함
+-- ==================================================
+INSERT INTO vet_specialties (vet_id, specialty_id) VALUES
+(1, 1),
+(1, 3),
+(2, 2),
+(3, 1),
+(3, 5),
+(4, 3),
+(5, 4),
+(6, 1),
+(7, 2),
+(7, 5),
+(8, 3),
+(9, 4);
 
-INSERT INTO pets VALUES (default, 'Leo', '2010-09-07', 1, 1);
-INSERT INTO pets VALUES (default, 'Basil', '2012-08-06', 6, 2);
-INSERT INTO pets VALUES (default, 'Rosy', '2011-04-17', 2, 3);
-INSERT INTO pets VALUES (default, 'Jewel', '2010-03-07', 2, 3);
-INSERT INTO pets VALUES (default, 'Iggy', '2010-11-30', 3, 4);
-INSERT INTO pets VALUES (default, 'George', '2010-01-20', 4, 5);
-INSERT INTO pets VALUES (default, 'Samantha', '2012-09-04', 1, 6);
-INSERT INTO pets VALUES (default, 'Max', '2012-09-04', 1, 6);
-INSERT INTO pets VALUES (default, 'Lucky', '2011-08-06', 5, 7);
-INSERT INTO pets VALUES (default, 'Mulligan', '2007-02-24', 2, 8);
-INSERT INTO pets VALUES (default, 'Freddy', '2010-03-09', 5, 9);
-INSERT INTO pets VALUES (default, 'Lucky', '2010-06-24', 2, 10);
-INSERT INTO pets VALUES (default, 'Sly', '2012-06-08', 1, 10);
+-- 수의사 10번은 전문 분야 미등록: 연결 행을 넣지 않음
 
-INSERT INTO visits VALUES (default, 7, '2013-01-01', 'rabies shot');
-INSERT INTO visits VALUES (default, 8, '2013-01-02', 'rabies shot');
-INSERT INTO visits VALUES (default, 8, '2013-01-03', 'neutered');
-INSERT INTO visits VALUES (default, 7, '2013-01-04', 'spayed');
+-- ==================================================
+-- 5. 보호자
+-- ==================================================
+INSERT INTO owners (id, owner_name, address, phone) VALUES
+(1,  '김지훈', '서울특별시 강남구 가상로 201',   '000-0000-2001'),
+(2,  '이민지', '서울특별시 서초구 가상로 202',   '000-0000-2002'),
+(3,  '박현우', '서울특별시 송파구 가상로 203',   '000-0000-2003'),
+(4,  '최수빈', '서울특별시 마포구 가상로 204',   '000-0000-2004'),
+(5,  '정유진', '서울특별시 성동구 가상로 205',   '000-0000-2005'),
+(6,  '강태양', '경기도 수원시 가상로 206',       '000-0000-2006'),
+(7,  '조은서', '경기도 성남시 가상로 207',       '000-0000-2007'),
+(8,  '윤도현', '인천광역시 남동구 가상로 208',   '000-0000-2008'),
+(9,  '장소윤', '대전광역시 서구 가상로 209',     '000-0000-2009'),
+(10, '임재현', '부산광역시 해운대구 가상로 210', '000-0000-2010');
+
+-- ==================================================
+-- 6. 동물 종류
+-- ==================================================
+INSERT INTO types (id, type_name) VALUES
+(1, '개'),
+(2, '고양이'),
+(3, '토끼'),
+(4, '햄스터'),
+(5, '새'),
+(6, '거북이');
+
+-- ==================================================
+-- 7. 반려동물
+-- 보호자 1번은 2마리 보유, 보호자 10번은 아직 반려동물 미등록
+-- ==================================================
+INSERT INTO pets (id, type_id, owner_id, pet_name, birth_date) VALUES
+(1,  1, 1, '초코', '2021-03-15'),
+(2,  2, 1, '나비', '2022-07-20'),
+(3,  1, 2, '보리', '2020-11-05'),
+(4,  2, 3, '루나', '2023-02-10'),
+(5,  3, 4, '토리', '2023-09-01'),
+(6,  1, 5, '콩이', '2019-12-25'),
+(7,  4, 6, '모찌', '2025-01-12'),
+(8,  2, 7, '레오', '2021-06-18'),
+(9,  5, 8, '하늘', '2024-04-03'),
+(10, 6, 9, '꼬북', '2018-08-09');
+
+-- ==================================================
+-- 8. 방문·진료 기록
+-- 반려동물별 복수 방문 및 방문 이력 없는 사례 포함
+-- ==================================================
+INSERT INTO visits (id, pet_id, visit_date, description) VALUES
+(1,  1, '2026-09-01', '정기 건강검진 실시. 체중과 전반적인 건강 상태 확인.'),
+(2,  1, '2026-10-01', '예방접종 실시. 접종 후 주의사항 안내.'),
+(3,  2, '2026-09-03', '귀 가려움 증상으로 내원. 귀 상태 확인 및 관리 방법 안내.'),
+(4,  2, '2026-09-17', '귀 상태 재검진. 이전 방문 대비 증상 호전 확인.'),
+(5,  3, '2026-09-05', '보행 불편 증상으로 내원. 관절 상태 확인 및 활동 조절 안내.'),
+(6,  4, '2026-09-08', '식욕 저하로 내원. 기본 검사 및 경과 관찰 안내.'),
+(7,  4, '2026-09-15', '식욕 저하 재검진. 식사량 회복 확인.'),
+(8,  5, '2026-09-10', '발톱 상태 확인 및 발톱 정리 실시.'),
+(9,  6, '2026-09-12', '치아 및 잇몸 상태 확인. 구강 관리 방법 안내.'),
+(10, 7, '2026-09-14', '정기 건강검진 실시. 사육 환경 및 먹이 관리 상담.'),
+(11, 8, '2026-09-20', '구토 증상으로 내원. 식이 관리 및 경과 관찰 안내.'),
+(12, 9, '2026-10-02', '깃털 상태 확인. 사육 환경 관리 방법 안내.');
+
+-- 반려동물 10번은 아직 방문 이력 없음
+
+-- Rows were inserted with explicit ids, so move each identity past them
+ALTER TABLE hospitals ALTER COLUMN id RESTART WITH 11;
+ALTER TABLE specialties ALTER COLUMN id RESTART WITH 6;
+ALTER TABLE vets ALTER COLUMN id RESTART WITH 11;
+ALTER TABLE owners ALTER COLUMN id RESTART WITH 11;
+ALTER TABLE types ALTER COLUMN id RESTART WITH 7;
+ALTER TABLE pets ALTER COLUMN id RESTART WITH 11;
+ALTER TABLE visits ALTER COLUMN id RESTART WITH 13;

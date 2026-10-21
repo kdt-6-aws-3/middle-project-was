@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.samples.petclinic.entity;
 
 import java.util.ArrayList;
@@ -22,6 +23,7 @@ import java.util.Objects;
 import org.springframework.core.style.ToStringCreator;
 import org.springframework.util.Assert;
 
+import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -46,7 +48,13 @@ import jakarta.validation.constraints.Size;
  */
 @Entity
 @Table(name = "owners")
-public class Owner extends Person {
+@AttributeOverride(name = "name", column = @Column(name = "owner_name"))
+public class Owner extends NamedEntity {
+
+	/**
+	 * Korean phone number with hyphens, e.g. 010-1234-5678 or 02-123-4567.
+	 */
+	public static final String PHONE_PATTERN = "\\d{2,3}-\\d{3,4}-\\d{4}";
 
 	@Column
 	@NotBlank
@@ -55,16 +63,13 @@ public class Owner extends Person {
 
 	@Column
 	@NotBlank
-	@Size(max = 80)
-	private String city;
+	@Pattern(regexp = PHONE_PATTERN, message = "{phone.invalid}")
+	private String phone;
 
-	@Column
-	@NotBlank
-	@Pattern(regexp = "\\d{10}", message = "{telephone.invalid}")
-	private String telephone;
-
-	@OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-	@JoinColumn(name = "owner_id")
+	// pets.owner_id is NOT NULL: nullable = false makes Hibernate write the owner id in
+	// the INSERT itself instead of filling it in with a later UPDATE
+	@OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
+	@JoinColumn(name = "owner_id", nullable = false)
 	@OrderBy("name")
 	private final List<Pet> pets = new ArrayList<>();
 
@@ -76,20 +81,12 @@ public class Owner extends Person {
 		this.address = address;
 	}
 
-	public String getCity() {
-		return this.city;
+	public String getPhone() {
+		return this.phone;
 	}
 
-	public void setCity(String city) {
-		this.city = city;
-	}
-
-	public String getTelephone() {
-		return this.telephone;
-	}
-
-	public void setTelephone(String telephone) {
-		this.telephone = telephone;
+	public void setPhone(String phone) {
+		this.phone = phone;
 	}
 
 	public List<Pet> getPets() {
@@ -109,6 +106,13 @@ public class Owner extends Person {
 			}
 		}
 		getPets().add(pet);
+	}
+
+	/**
+	 * Removes the pet; with orphan removal the pet and its visits are deleted on save.
+	 */
+	public void removePet(Pet pet) {
+		getPets().remove(pet);
 	}
 
 	/**
@@ -159,11 +163,9 @@ public class Owner extends Person {
 	public String toString() {
 		return new ToStringCreator(this).append("id", this.getId())
 			.append("new", this.isNew())
-			.append("lastName", this.getLastName())
-			.append("firstName", this.getFirstName())
+			.append("name", this.getName())
 			.append("address", this.address)
-			.append("city", this.city)
-			.append("telephone", this.telephone)
+			.append("phone", this.phone)
 			.toString();
 	}
 

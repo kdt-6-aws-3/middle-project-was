@@ -41,7 +41,7 @@ public class MysqlTestApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(PetClinicApplication.class, "--spring.profiles.active=mysql",
-				"--spring.docker.compose.enabled=false");
+				"--spring.docker.compose.enabled=false", "--spring.sql.init.mode=always");
 	}
 
 }

@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.samples.petclinic.controller;
 
 import java.net.URI;
@@ -21,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.samples.petclinic.dto.PetDetails;
 import org.springframework.samples.petclinic.dto.PetRequest;
 import org.springframework.samples.petclinic.service.PetService;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,7 +32,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST API for adding and editing the pets of an owner.
+ * REST API for adding, editing and deleting the pets of an owner.
  *
  * @author Juergen Hoeller
  * @author Ken Krebs
@@ -60,6 +62,12 @@ class PetController {
 	@PutMapping("/{petId}")
 	PetDetails updatePet(@PathVariable int ownerId, @PathVariable int petId, @RequestBody PetRequest request) {
 		return this.petService.updatePet(ownerId, petId, request);
+	}
+
+	@DeleteMapping("/{petId}")
+	ResponseEntity<Void> deletePet(@PathVariable int ownerId, @PathVariable int petId) {
+		this.petService.deletePet(ownerId, petId);
+		return ResponseEntity.noContent().build();
 	}
 
 }

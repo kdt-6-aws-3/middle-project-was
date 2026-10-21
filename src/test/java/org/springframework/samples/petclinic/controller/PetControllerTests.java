@@ -16,11 +16,13 @@
 
 package org.springframework.samples.petclinic.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -74,6 +76,8 @@ class PetControllerTests {
 	@MockitoBean
 	private PetTypeRepository types;
 
+	private Owner owner;
+
 	@BeforeEach
 	void setup() {
 		PetType hamster = new PetType();
@@ -81,19 +85,19 @@ class PetControllerTests {
 		hamster.setName("hamster");
 		given(this.types.findById(3)).willReturn(Optional.of(hamster));
 
-		Owner owner = new Owner();
-		owner.setId(TEST_OWNER_ID);
+		this.owner = new Owner();
+		this.owner.setId(TEST_OWNER_ID);
 		Pet pet = new Pet();
 		Pet dog = new Pet();
-		owner.addPet(pet);
-		owner.addPet(dog);
+		this.owner.addPet(pet);
+		this.owner.addPet(dog);
 		pet.setId(TEST_PET_ID);
 		dog.setId(TEST_PET_ID + 1);
 		pet.setName("petty");
 		pet.setType(hamster);
 		pet.setBirthDate(LocalDate.of(2015, 2, 12));
 		dog.setName("doggy");
-		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(owner));
+		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(this.owner));
 		given(this.owners.saveAndFlush(any(Owner.class))).willAnswer(invocation -> {
 			Owner saved = invocation.getArgument(0);
 			saved.getPets().stream().filter(Pet::isNew).forEach(newPet -> newPet.setId(42));
@@ -219,6 +223,22 @@ class PetControllerTests {
 	void updateUnknownPet() throws Exception {
 		putPet(999, """
 				{"name": "Betty", "birthDate": "2015-02-12", "typeId": 3}""").andExpect(status().isNotFound());
+	}
+
+	@Test
+	void deletePet() throws Exception {
+		mockMvc.perform(delete("/api/owners/{ownerId}/pets/{petId}", TEST_OWNER_ID, TEST_PET_ID))
+			.andExpect(status().isNoContent());
+		assertThat(this.owner.getPet(TEST_PET_ID)).isNull();
+		assertThat(this.owner.getPets()).hasSize(1);
+		verify(this.owners).save(this.owner);
+	}
+
+	@Test
+	void deleteUnknownPet() throws Exception {
+		mockMvc.perform(delete("/api/owners/{ownerId}/pets/{petId}", TEST_OWNER_ID, 999))
+			.andExpect(status().isNotFound());
+		verify(this.owners, never()).save(any(Owner.class));
 	}
 
 }

@@ -13,45 +13,48 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.samples.petclinic.entity;
 
+import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Column;
-import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /**
- * Simple JavaBean domain object representing an person.
- *
- * @author Ken Krebs
+ * Animal hospital (branch) that veterinarians belong to.
  */
-@MappedSuperclass
-public class Person extends BaseEntity {
+@Entity
+@Table(name = "hospitals")
+@AttributeOverride(name = "name", column = @Column(name = "hospital_name"))
+public class Hospital extends NamedEntity {
 
-	@Column(length = 30)
-	@Size(max = 30)
+	@Column
 	@NotBlank
-	private String firstName;
+	@Size(max = 255)
+	private String address;
 
-	@Column(length = 30)
-	@Size(max = 30)
+	@Column
 	@NotBlank
-	private String lastName;
+	@Size(max = 50)
+	private String phone;
 
-	public String getFirstName() {
-		return this.firstName;
+	public String getAddress() {
+		return this.address;
 	}
 
-	public void setFirstName(String firstName) {
-		this.firstName = firstName;
+	public void setAddress(String address) {
+		this.address = address;
 	}
 
-	public String getLastName() {
-		return this.lastName;
+	public String getPhone() {
+		return this.phone;
 	}
 
-	public void setLastName(String lastName) {
-		this.lastName = lastName;
+	public void setPhone(String phone) {
+		this.phone = phone;
 	}
 
 }

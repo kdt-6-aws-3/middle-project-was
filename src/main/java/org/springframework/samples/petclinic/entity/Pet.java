@@ -13,15 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.samples.petclinic.entity;
 
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.LinkedHashSet;
+import java.util.Objects;
 import java.util.Set;
 
 import org.springframework.format.annotation.DateTimeFormat;
 
+import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -42,6 +45,7 @@ import jakarta.persistence.Table;
  */
 @Entity
 @Table(name = "pets")
+@AttributeOverride(name = "name", column = @Column(name = "pet_name"))
 public class Pet extends NamedEntity {
 
 	@Column
@@ -52,8 +56,9 @@ public class Pet extends NamedEntity {
 	@JoinColumn(name = "type_id")
 	private PetType type;
 
-	@OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-	@JoinColumn(name = "pet_id")
+	// visits.pet_id is NOT NULL: written in the INSERT itself (see Owner#pets)
+	@OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
+	@JoinColumn(name = "pet_id", nullable = false)
 	@OrderBy("date ASC")
 	private final Set<Visit> visits = new LinkedHashSet<>();
 
@@ -79,6 +84,25 @@ public class Pet extends NamedEntity {
 
 	public void addVisit(Visit visit) {
 		getVisits().add(visit);
+	}
+
+	/**
+	 * Return the visit with the given id, or null if this pet has no such visit.
+	 */
+	public Visit getVisit(Integer id) {
+		for (Visit visit : getVisits()) {
+			if (!visit.isNew() && Objects.equals(visit.getId(), id)) {
+				return visit;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Removes the visit; with orphan removal it is deleted on save.
+	 */
+	public void removeVisit(Visit visit) {
+		getVisits().remove(visit);
 	}
 
 }

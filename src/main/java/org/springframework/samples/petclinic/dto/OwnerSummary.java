@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.samples.petclinic.dto;
 
 import java.util.List;
@@ -23,12 +24,11 @@ import org.springframework.samples.petclinic.entity.Pet;
 /**
  * Owner as shown in search results: contact details and pet names.
  */
-public record OwnerSummary(Integer id, String firstName, String lastName, String address, String city, String telephone,
-		List<String> pets) {
+public record OwnerSummary(Integer id, String name, String address, String phone, List<String> pets) {
 
 	public static OwnerSummary from(Owner owner) {
-		return new OwnerSummary(owner.getId(), owner.getFirstName(), owner.getLastName(), owner.getAddress(),
-				owner.getCity(), owner.getTelephone(), owner.getPets().stream().map(Pet::getName).toList());
+		return new OwnerSummary(owner.getId(), owner.getName(), owner.getAddress(), owner.getPhone(),
+				owner.getPets().stream().map(Pet::getName).toList());
 	}
 
 }

@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.samples.petclinic.dto;
 
 import org.springframework.samples.petclinic.entity.Owner;
@@ -24,16 +25,13 @@ import jakarta.validation.constraints.Size;
 /**
  * Request body for creating or updating an owner. The rules mirror {@link Owner}.
  */
-public record OwnerRequest(@NotBlank @Size(max = 30) String firstName, @NotBlank @Size(max = 30) String lastName,
-		@NotBlank @Size(max = 255) String address, @NotBlank @Size(max = 80) String city,
-		@NotBlank @Pattern(regexp = "\\d{10}", message = "{telephone.invalid}") String telephone) {
+public record OwnerRequest(@NotBlank @Size(max = 255) String name, @NotBlank @Size(max = 255) String address,
+		@NotBlank @Pattern(regexp = Owner.PHONE_PATTERN, message = "{phone.invalid}") String phone) {
 
 	public void applyTo(Owner owner) {
-		owner.setFirstName(this.firstName);
-		owner.setLastName(this.lastName);
+		owner.setName(this.name);
 		owner.setAddress(this.address);
-		owner.setCity(this.city);
-		owner.setTelephone(this.telephone);
+		owner.setPhone(this.phone);
 	}
 
 }

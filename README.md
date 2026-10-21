@@ -51,13 +51,13 @@ org.springframework.samples.petclinic
 ├── controller   REST 컨트롤러 (요청·응답 변환만)
 ├── service      업무 로직과 검증 (PetValidator 포함)
 ├── repository   Spring Data JPA 리포지토리
-├── entity       JPA 엔티티 (Owner, Pet, PetType, Visit, Vet, Specialty 등)
+├── entity       JPA 엔티티 (Owner, Pet, PetType, Visit, Hospital, Vet, Specialty 등)
 ├── dto          요청·응답 JSON (…Request, …Details, …Summary, PageResponse)
 ├── exception    예외와 오류 응답 처리 (RFC 9457)
 └── config       캐시 설정
 ```
 
-반려동물과 방문 기록은 보호자에 딸린 데이터라 별도 리포지토리 없이 `OwnerRepository`로 보호자와 함께 저장합니다.
+반려동물과 방문 기록은 보호자에 딸린 데이터라 별도 리포지토리 없이 `OwnerRepository`로 보호자와 함께 저장·삭제합니다. DB의 외래 키에 `ON DELETE CASCADE`가 없으므로, 보호자를 지우면 JPA가 방문 기록 → 반려동물 → 보호자 순서로 지웁니다.
 
 ## API
 
@@ -65,12 +65,13 @@ org.springframework.samples.petclinic
 
 | 메서드 | 경로 | 설명 |
 | --- | --- | --- |
-| GET | `/api/owners?lastName=&page=&size=` | 보호자 검색 |
-| GET · POST · PUT | `/api/owners`, `/api/owners/{ownerId}` | 보호자 상세·등록·수정 |
+| GET | `/api/owners?name=&page=&size=` | 보호자 검색 (이름으로 시작) |
+| GET · POST · PUT · DELETE | `/api/owners`, `/api/owners/{ownerId}` | 보호자 상세·등록·수정·삭제 |
+| GET · POST · PUT · DELETE | `/api/owners/{ownerId}/pets`, `/api/owners/{ownerId}/pets/{petId}` | 반려동물 상세·등록·수정·삭제 |
+| GET · POST · PUT · DELETE | `/api/owners/{ownerId}/pets/{petId}/visits`, `…/visits/{visitId}` | 방문 기록 목록·등록·수정·삭제 |
+| GET | `/api/hospitals`, `/api/hospitals/{hospitalId}`, `/api/hospitals/{hospitalId}/vets` | 병원 목록·상세·소속 수의사 |
+| GET | `/api/vets` | 수의사 목록 (병원 포함) |
 | GET | `/api/pettypes` | 동물 종류 목록 |
-| GET · POST · PUT | `/api/owners/{ownerId}/pets`, `/api/owners/{ownerId}/pets/{petId}` | 반려동물 상세·등록·수정 |
-| GET · POST | `/api/owners/{ownerId}/pets/{petId}/visits` | 방문 기록 목록·등록 |
-| GET | `/api/vets` | 수의사 목록 |
 | GET | `/actuator/health` | 헬스 체크 |
 
 오류는 RFC 9457 Problem Details 형식으로 응답하고, 검증 오류 메시지는 요청의 `Accept-Language`(예: `ko`)를 따릅니다.
@@ -83,7 +84,7 @@ JDK 21이 필요합니다.
 ./mvnw spring-boot:run
 ```
 
-<http://localhost:8080/api/owners> 또는 <http://localhost:8080/actuator/health>로 확인합니다. 기본 DB는 H2(메모리)이며, 기동할 때 `src/main/resources/db/h2/schema.sql`과 `data.sql`로 테이블과 샘플 데이터를 만듭니다.
+<http://localhost:8080/api/owners> 또는 <http://localhost:8080/actuator/health>로 확인합니다. 기본 DB는 H2(메모리)이며, 기동할 때 `src/main/resources/db/h2/schema.sql`과 `data.sql`로 테이블과 샘플 데이터를 만듭니다. 이 두 파일은 `db/mysql`(운영 RDS 스키마·데이터)을 H2 문법으로 옮긴 것이므로, MySQL 쪽이 바뀌면 함께 고칩니다.
 
 React 개발 서버에서 호출할 때는 React 개발 서버의 프록시 기능으로 `/api`를 `http://localhost:8080`에 연결합니다. 운영에서는 같은 도메인(Apache 경유)이라 CORS 설정이 필요 없습니다.
 
@@ -94,7 +95,7 @@ React 개발 서버에서 호출할 때는 React 개발 서버의 프록시 기�
 ```
 
 - 결과물: `target/spring-petclinic-4.0.0-SNAPSHOT.jar` (실행 가능한 JAR)
-- MySQL·PostgreSQL 통합 테스트는 Docker가 있을 때만 실행되고, 없으면 자동으로 건너뜁니다.
+- MySQL 통합 테스트는 Docker가 있을 때만 실행되고, 없으면 자동으로 건너뜁니다.
 - **프로젝트 경로에 한글 등 영문이 아닌 문자가 있으면** checkstyle(nohttp) 단계에서 설정 파일 경로를 읽지 못해 빌드가 실패합니다. 영문 경로(예: `C:\dev\spring-petclinic`)에서 빌드하세요.
 
 ## MySQL로 실행
@@ -105,8 +106,9 @@ React 개발 서버에서 호출할 때는 React 개발 서버의 프록시 기�
 SPRING_PROFILES_ACTIVE=mysql SPRING_DATASOURCE_URL=jdbc:mysql://<DB 엔드포인트>:3306/petclinic SPRING_DATASOURCE_USERNAME=petclinic SPRING_DATASOURCE_PASSWORD=<비밀번호> java -jar target/spring-petclinic-4.0.0-SNAPSHOT.jar
 ```
 
-- 기동할 때 `src/main/resources/db/mysql/schema.sql`과 `data.sql`이 실행됩니다. 모두 `IF NOT EXISTS`, `INSERT IGNORE`로 작성되어 있어 다시 기동해도 기존 데이터를 덮어쓰지 않습니다.
-- 앱 전용 DB 계정에는 테이블 생성(`CREATE`)과 데이터 읽기·쓰기 권한이 필요합니다.
+- 테이블과 데이터는 DB 담당이 `src/main/resources/db/mysql/schema.sql`과 `data.sql`을 **한 번** 실행해 만듭니다. 두 파일은 다시 실행할 수 없어서(`CREATE TABLE`, 일반 `INSERT`) `mysql` 프로파일은 기동할 때 SQL을 실행하지 않습니다(`spring.sql.init.mode=never`).
+- 빈 DB에 처음 한 번만 앱으로 넣으려면 `SPRING_SQL_INIT_MODE=always`를 잠깐 주고 기동한 뒤 다시 뺍니다.
+- 앱 전용 DB 계정에는 데이터 읽기·쓰기 권한(`SELECT, INSERT, UPDATE, DELETE`)만 있으면 됩니다.
 
 ## 서버(EC2)에 배포
 

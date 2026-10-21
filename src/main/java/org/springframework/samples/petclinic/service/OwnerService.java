@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.samples.petclinic.service;
 
 import org.springframework.data.domain.Page;
@@ -25,9 +26,10 @@ import org.springframework.samples.petclinic.entity.Owner;
 import org.springframework.samples.petclinic.exception.ResourceNotFoundException;
 import org.springframework.samples.petclinic.repository.OwnerRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Searching, creating and updating owners.
+ * Searching, creating, updating and deleting owners.
  */
 @Service
 public class OwnerService {
@@ -41,14 +43,14 @@ public class OwnerService {
 	}
 
 	/**
-	 * Finds owners whose last name starts with the given value. Page numbers are 1-based;
+	 * Finds owners whose name starts with the given value. Page numbers are 1-based;
 	 * out-of-range page and size values are clamped.
 	 */
-	public PageResponse<OwnerSummary> findOwners(String lastName, int page, int size) {
-		// empty last name signifies broadest possible search
+	public PageResponse<OwnerSummary> findOwners(String name, int page, int size) {
+		// empty name signifies broadest possible search
 		int validatedPage = Math.max(page, 1);
 		int validatedSize = Math.clamp(size, 1, MAX_PAGE_SIZE);
-		Page<Owner> results = this.owners.findByLastNameStartingWith(lastName.strip(),
+		Page<Owner> results = this.owners.findByNameStartingWith(name.strip(),
 				PageRequest.of(validatedPage - 1, validatedSize));
 		return PageResponse.from(results, OwnerSummary::from);
 	}
@@ -67,6 +69,15 @@ public class OwnerService {
 		Owner owner = findOwner(ownerId);
 		request.applyTo(owner);
 		return OwnerDetails.from(this.owners.save(owner));
+	}
+
+	/**
+	 * Deletes the owner together with their pets and visits (the foreign keys have no ON
+	 * DELETE CASCADE, so the children are deleted first by JPA).
+	 */
+	@Transactional
+	public void deleteOwner(int ownerId) {
+		this.owners.delete(findOwner(ownerId));
 	}
 
 	private Owner findOwner(int ownerId) {

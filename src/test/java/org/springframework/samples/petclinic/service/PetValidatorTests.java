@@ -127,7 +127,7 @@ class PetValidatorTests {
 		@Test
 		void validateWithLongPetName() {
 			petType.setName(petTypeName);
-			pet.setName("A".repeat(31));
+			pet.setName("A".repeat(256));
 			pet.setType(petType);
 			pet.setBirthDate(petBirthDate);
 

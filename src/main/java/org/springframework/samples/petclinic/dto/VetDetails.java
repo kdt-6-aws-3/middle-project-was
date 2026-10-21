@@ -13,19 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.samples.petclinic.dto;
 
 import java.util.List;
 
+import org.springframework.samples.petclinic.entity.Hospital;
 import org.springframework.samples.petclinic.entity.Vet;
 
 /**
- * Veterinarian with specialties sorted by name.
+ * Veterinarian with the hospital they work at and specialties sorted by name.
  */
-public record VetDetails(Integer id, String firstName, String lastName, List<SpecialtyDetails> specialties) {
+public record VetDetails(Integer id, String name, HospitalDetails hospital, List<SpecialtyDetails> specialties) {
 
 	public static VetDetails from(Vet vet) {
-		return new VetDetails(vet.getId(), vet.getFirstName(), vet.getLastName(),
+		Hospital hospital = vet.getHospital();
+		return new VetDetails(vet.getId(), vet.getName(), hospital != null ? HospitalDetails.from(hospital) : null,
 				vet.getSpecialties().stream().map(SpecialtyDetails::from).toList());
 	}
 

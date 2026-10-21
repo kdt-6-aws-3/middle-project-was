@@ -32,6 +32,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.samples.petclinic.entity.Hospital;
 import org.springframework.samples.petclinic.entity.Specialty;
 import org.springframework.samples.petclinic.entity.Vet;
 import org.springframework.samples.petclinic.repository.VetRepository;
@@ -55,19 +56,28 @@ class VetControllerTests {
 	@MockitoBean
 	private VetRepository vets;
 
+	static Hospital gangnam() {
+		Hospital gangnam = new Hospital();
+		gangnam.setId(1);
+		gangnam.setName("Gangnam");
+		gangnam.setAddress("Seoul Gangnam-gu");
+		gangnam.setPhone("000-0000-1001");
+		return gangnam;
+	}
+
 	private Vet james() {
 		Vet james = new Vet();
-		james.setFirstName("James");
-		james.setLastName("Carter");
+		james.setName("James Carter");
 		james.setId(1);
+		james.setHospital(gangnam());
 		return james;
 	}
 
 	private Vet helen() {
 		Vet helen = new Vet();
-		helen.setFirstName("Helen");
-		helen.setLastName("Leary");
+		helen.setName("Helen Leary");
 		helen.setId(2);
+		helen.setHospital(gangnam());
 		Specialty radiology = new Specialty();
 		radiology.setId(1);
 		radiology.setName("radiology");
@@ -87,8 +97,12 @@ class VetControllerTests {
 			.andExpect(content().contentType(MediaType.APPLICATION_JSON))
 			.andExpect(jsonPath("$", hasSize(2)))
 			.andExpect(jsonPath("$[0].id").value(1))
+			.andExpect(jsonPath("$[0].name").value("James Carter"))
+			.andExpect(jsonPath("$[0].hospital.id").value(1))
+			.andExpect(jsonPath("$[0].hospital.name").value("Gangnam"))
+			.andExpect(jsonPath("$[0].hospital.phone").value("000-0000-1001"))
 			.andExpect(jsonPath("$[0].specialties", hasSize(0)))
-			.andExpect(jsonPath("$[1].lastName").value("Leary"))
+			.andExpect(jsonPath("$[1].name").value("Helen Leary"))
 			.andExpect(jsonPath("$[1].specialties[0].name").value("radiology"));
 	}
 

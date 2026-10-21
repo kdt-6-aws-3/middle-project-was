@@ -16,13 +16,16 @@
 
 package org.springframework.samples.petclinic.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -62,26 +65,30 @@ class VisitControllerTests {
 
 	private static final int TEST_PET_ID = 1;
 
+	private static final int TEST_VISIT_ID = 1;
+
 	@Autowired
 	private MockMvc mockMvc;
 
 	@MockitoBean
 	private OwnerRepository owners;
 
+	private Owner owner;
+
 	@BeforeEach
 	void init() {
-		Owner owner = new Owner();
-		owner.setId(TEST_OWNER_ID);
+		this.owner = new Owner();
+		this.owner.setId(TEST_OWNER_ID);
 		Pet pet = new Pet();
-		owner.addPet(pet);
+		this.owner.addPet(pet);
 		pet.setId(TEST_PET_ID);
 		pet.setName("Leo");
 		Visit visit = new Visit();
-		visit.setId(1);
+		visit.setId(TEST_VISIT_ID);
 		visit.setDate(LocalDate.of(2024, 5, 1));
 		visit.setDescription("rabies shot");
 		pet.addVisit(visit);
-		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(owner));
+		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(this.owner));
 		given(this.owners.save(any(Owner.class))).willAnswer(invocation -> {
 			Owner saved = invocation.getArgument(0);
 			saved.getPet(TEST_PET_ID).getVisits().stream().filter(Visit::isNew).forEach(v -> v.setId(7));
@@ -93,6 +100,13 @@ class VisitControllerTests {
 		return mockMvc.perform(post("/api/owners/{ownerId}/pets/{petId}/visits", TEST_OWNER_ID, TEST_PET_ID)
 			.contentType(MediaType.APPLICATION_JSON)
 			.content(json));
+	}
+
+	private ResultActions putVisit(int visitId, String json) throws Exception {
+		return mockMvc
+			.perform(put("/api/owners/{ownerId}/pets/{petId}/visits/{visitId}", TEST_OWNER_ID, TEST_PET_ID, visitId)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(json));
 	}
 
 	@Test
@@ -137,6 +151,50 @@ class VisitControllerTests {
 			.andExpect(jsonPath("$.errors[?(@.field == 'date')].code").value("typeMismatch.visitDate"))
 			.andExpect(jsonPath("$.errors[?(@.field == 'date')].message").value("Visit date must be in the future"));
 		verify(this.owners, never()).save(any(Owner.class));
+	}
+
+	@Test
+	void updateVisit() throws Exception {
+		String tomorrow = LocalDate.now().plusDays(1).toString();
+		putVisit(TEST_VISIT_ID, """
+				{"date": "%s", "description": "follow-up"}""".formatted(tomorrow)).andExpect(status().isOk())
+			.andExpect(jsonPath("$.id").value(TEST_VISIT_ID))
+			.andExpect(jsonPath("$.date").value(tomorrow))
+			.andExpect(jsonPath("$.description").value("follow-up"));
+	}
+
+	@Test
+	void updateVisitWithTodayIsRejected() throws Exception {
+		putVisit(TEST_VISIT_ID, """
+				{"date": "%s", "description": "follow-up"}""".formatted(LocalDate.now()))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.errors[?(@.field == 'date')].code").value("typeMismatch.visitDate"));
+		assertThat(this.owner.getPet(TEST_PET_ID).getVisit(TEST_VISIT_ID).getDescription()).isEqualTo("rabies shot");
+		verify(this.owners, never()).save(any(Owner.class));
+	}
+
+	@Test
+	void updateUnknownVisit() throws Exception {
+		putVisit(999, """
+				{"date": "%s", "description": "follow-up"}""".formatted(LocalDate.now().plusDays(1)))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.detail").value("Visit 999 not found for pet 1"));
+	}
+
+	@Test
+	void deleteVisit() throws Exception {
+		mockMvc
+			.perform(delete("/api/owners/{ownerId}/pets/{petId}/visits/{visitId}", TEST_OWNER_ID, TEST_PET_ID,
+					TEST_VISIT_ID))
+			.andExpect(status().isNoContent());
+		assertThat(this.owner.getPet(TEST_PET_ID).getVisits()).isEmpty();
+		verify(this.owners).save(this.owner);
+	}
+
+	@Test
+	void deleteUnknownVisit() throws Exception {
+		mockMvc.perform(delete("/api/owners/{ownerId}/pets/{petId}/visits/{visitId}", TEST_OWNER_ID, TEST_PET_ID, 999))
+			.andExpect(status().isNotFound());
 	}
 
 }
