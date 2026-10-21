@@ -46,3 +46,11 @@ out/
 _site/
 *.css
 !petclinic.css
+
+### Docker / Kubernetes ###
+# not part of this project: the WAS runs as a JAR under systemd on EC2
+Dockerfile
+docker-compose*.yml
+compose*.yaml
+.devcontainer/
+k8s/
