@@ -108,39 +108,46 @@ SPRING_PROFILES_ACTIVE=mysql SPRING_DATASOURCE_URL=jdbc:mysql://<DB 엔드포인
 - 기동할 때 `src/main/resources/db/mysql/schema.sql`과 `data.sql`이 실행됩니다. 모두 `IF NOT EXISTS`, `INSERT IGNORE`로 작성되어 있어 다시 기동해도 기존 데이터를 덮어쓰지 않습니다.
 - 앱 전용 DB 계정에는 테이블 생성(`CREATE`)과 데이터 읽기·쓰기 권한이 필요합니다.
 
-## 서버(EC2)에서 실행: systemd 서비스
+## 서버(EC2)에 배포
 
-접속 정보는 root만 읽을 수 있는 환경 파일에 둡니다.
+Amazon Linux 2023 기준입니다. 원본 EC2 한 대에서 이 레포를 받아 빌드·설치하고, AMI로 만들어 같은 WAS를 여러 대 띄웁니다. 접속은 SSM Session Manager를 사용합니다.
 
-```bash
-# /etc/petclinic/petclinic.env  (chmod 600)
-SPRING_PROFILES_ACTIVE=mysql
-SPRING_DATASOURCE_URL=jdbc:mysql://<DB 엔드포인트>:3306/petclinic
-SPRING_DATASOURCE_USERNAME=petclinic
-SPRING_DATASOURCE_PASSWORD=<비밀번호>
-```
+| 파일 | 역할 |
+| --- | --- |
+| `deploy/build-and-deploy.sh` | git·JDK 설치 → `git pull` → `./mvnw` 빌드 → `setup-was.sh` 실행 |
+| `deploy/setup-was.sh` | Corretto 21 설치, `petclinic` 계정 생성, JAR·환경 파일·서비스 설치 후 시작 |
+| `deploy/petclinic.service` | systemd 서비스 → `/etc/systemd/system/` (부팅 시 자동 시작, 비정상 종료 시 10초 뒤 재시작, 시간대 `Asia/Seoul`) |
+| `deploy/petclinic.env.example` | DB 접속 정보 양식 → `/etc/petclinic/petclinic.env` (root만 읽기, 600) |
 
-```ini
-# /etc/systemd/system/petclinic.service
-[Unit]
-Description=PetClinic WAS (Spring Boot)
-After=network-online.target
-Wants=network-online.target
+라이브러리는 따로 설치하지 않습니다. `./mvnw`가 `pom.xml`에 적힌 라이브러리를 내려받아 실행 가능한 JAR 안에 모두 넣으므로, 서버에는 빌드용 git·JDK와 실행용 Java만 있으면 됩니다.
 
-[Service]
-User=petclinic
-EnvironmentFile=/etc/petclinic/petclinic.env
-ExecStart=/usr/bin/java -Xms256m -Xmx512m -jar /opt/petclinic/petclinic.jar
-SuccessExitStatus=143
-Restart=on-failure
+1. EC2에 SSM Session Manager로 접속해 레포를 받습니다. (EC2에서 인터넷으로 나갈 수 있어야 합니다)
 
-[Install]
-WantedBy=multi-user.target
-```
+   ```bash
+   sudo dnf install -y git
+   git clone https://github.com/kdt-6-aws-3/middle-project-was.git
+   ```
 
-```bash
-sudo systemctl daemon-reload && sudo systemctl enable --now petclinic
-```
+2. 빌드·설치 스크립트를 실행합니다. 첫 실행은 설치까지만 하고 멈춥니다.
+
+   ```bash
+   sudo bash middle-project-was/deploy/build-and-deploy.sh
+   ```
+
+3. 환경 파일의 `<...>` 값을 DB 담당에게 받은 정보로 채웁니다. **실제 비밀번호는 레포에 커밋하지 않습니다.** (레포는 public)
+
+   ```bash
+   sudo vi /etc/petclinic/petclinic.env
+   ```
+
+4. 2번 명령을 다시 실행합니다. 서비스를 시작하고 헬스 체크가 `UP`이 될 때까지 기다립니다.
+5. `sudo reboot` 뒤에도 자동으로 뜨는지 확인한 다음 AMI를 만듭니다.
+
+- 로그: `journalctl -u petclinic -f`
+- 코드를 고친 뒤에는 푸시하고 2번 명령만 다시 실행하면 됩니다. 환경 파일은 덮어쓰지 않습니다. 바꾼 뒤에는 AMI를 새로 만듭니다.
+- 시간대를 `Asia/Seoul`로 두는 이유: 생일·방문 날짜 검증의 "오늘"이 서버 시간대를 따르는데, EC2 기본값(UTC)이면 한국 시간 00~09시에 하루가 어긋납니다.
+- EC2 IAM 역할에 `AmazonSSMManagedInstanceCore`가 필요합니다. SSH(22) 인바운드는 열지 않습니다.
+- 환경 파일은 AMI에 함께 들어가므로 AMI를 다른 계정에 공유하지 않습니다.
 
 ## 원본 프로젝트
 

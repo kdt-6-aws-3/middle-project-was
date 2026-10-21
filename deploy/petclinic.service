@@ -1,0 +1,22 @@
+[Unit]
+Description=PetClinic WAS (Spring Boot)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=petclinic
+Group=petclinic
+EnvironmentFile=/etc/petclinic/petclinic.env
+# EC2 defaults to UTC; "today" in the date validations must be Korean time
+Environment=TZ=Asia/Seoul
+ExecStart=/usr/bin/java -Xms256m -Xmx512m -jar /opt/petclinic/petclinic.jar
+# JVM exit code on SIGTERM
+SuccessExitStatus=143
+# Retry when the DB is not reachable yet right after boot
+Restart=on-failure
+RestartSec=10
+# Longer than the 20s graceful shutdown (spring.lifecycle.timeout-per-shutdown-phase)
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
