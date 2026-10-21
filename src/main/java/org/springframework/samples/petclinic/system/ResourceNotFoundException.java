@@ -13,29 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.springframework.samples.petclinic.system;
 
-import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-
 /**
- * Test class for {@link CrashController}
- *
- * @author Colin But
- * @author Alex Lutz
+ * Thrown when a requested resource (owner, pet, ...) does not exist. Rendered as a 404
+ * problem detail by {@link ApiExceptionHandler}.
  */
-// Waiting https://github.com/spring-projects/spring-boot/issues/5574 ..good
-// luck ((plain(st) UNIT test)! :)
-class CrashControllerTests {
+public class ResourceNotFoundException extends RuntimeException {
 
-	final CrashController testee = new CrashController();
-
-	@Test
-	void triggerException() {
-		assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> testee.triggerException())
-			.withMessageContaining("Expected: controller used to showcase what happens when an exception is thrown");
+	public ResourceNotFoundException(String message) {
+		super(message);
 	}
 
 }

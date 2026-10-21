@@ -17,6 +17,7 @@
 package org.springframework.samples.petclinic;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,9 +27,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.samples.petclinic.vet.VetRepository;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT, properties = "logging.level.sql=DEBUG")
@@ -52,15 +55,48 @@ public class PetClinicIntegrationTests {
 	@Test
 	void ownerDetails() {
 		RestTemplate template = builder.baseUri("http://localhost:" + port).build();
-		ResponseEntity<String> result = template.exchange(RequestEntity.get("/owners/1").build(), String.class);
+		ResponseEntity<String> result = template.exchange(RequestEntity.get("/api/owners/1").build(), String.class);
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+		assertThat(result.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_JSON);
+		assertThat(result.getBody()).contains("\"lastName\":\"Franklin\"");
 	}
 
 	@Test
 	void ownerList() {
 		RestTemplate template = builder.baseUri("http://localhost:" + port).build();
-		ResponseEntity<String> result = template.exchange(RequestEntity.get("/owners?lastName=").build(), String.class);
+		ResponseEntity<String> result = template.exchange(RequestEntity.get("/api/owners?lastName=").build(),
+				String.class);
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+		assertThat(result.getBody()).contains("\"totalElements\":10");
+	}
+
+	@Test
+	void unknownOwnerIsProblemDetail() {
+		RestTemplate template = builder.baseUri("http://localhost:" + port).build();
+		HttpClientErrorException ex = catchThrowableOfType(HttpClientErrorException.class,
+				() -> template.exchange(RequestEntity.get("/api/owners/99999").build(), String.class));
+		assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+		assertThat(ex.getResponseHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_PROBLEM_JSON);
+		assertThat(ex.getResponseBodyAsString()).contains("Owner 99999 not found");
+	}
+
+	@Test
+	void pagesAreNotServed() {
+		RestTemplate template = builder.baseUri("http://localhost:" + port).build();
+		HttpClientErrorException ex = catchThrowableOfType(HttpClientErrorException.class,
+				() -> template.exchange(RequestEntity.get("/").build(), String.class));
+		assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+	}
+
+	@Test
+	void healthIsUpAndOtherActuatorEndpointsAreHidden() {
+		RestTemplate template = builder.baseUri("http://localhost:" + port).build();
+		ResponseEntity<String> health = template.exchange(RequestEntity.get("/actuator/health").build(), String.class);
+		assertThat(health.getStatusCode()).isEqualTo(HttpStatus.OK);
+		assertThat(health.getBody()).contains("\"status\":\"UP\"");
+		HttpClientErrorException ex = catchThrowableOfType(HttpClientErrorException.class,
+				() -> template.exchange(RequestEntity.get("/actuator/env").build(), String.class));
+		assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
 	}
 
 	public static void main(String[] args) {

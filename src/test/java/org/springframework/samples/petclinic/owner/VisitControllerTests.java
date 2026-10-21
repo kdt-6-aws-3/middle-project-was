@@ -16,24 +16,29 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
+
+import java.time.LocalDate;
+import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledInNativeImage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
-import java.time.LocalDate;
-import java.util.Optional;
+import org.springframework.test.web.servlet.ResultActions;
 
 /**
  * Test class for {@link VisitController}
@@ -59,63 +64,72 @@ class VisitControllerTests {
 	@BeforeEach
 	void init() {
 		Owner owner = new Owner();
+		owner.setId(TEST_OWNER_ID);
 		Pet pet = new Pet();
 		owner.addPet(pet);
 		pet.setId(TEST_PET_ID);
+		pet.setName("Leo");
+		Visit visit = new Visit();
+		visit.setId(1);
+		visit.setDate(LocalDate.of(2024, 5, 1));
+		visit.setDescription("rabies shot");
+		pet.addVisit(visit);
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(owner));
+		given(this.owners.save(any(Owner.class))).willAnswer(invocation -> {
+			Owner saved = invocation.getArgument(0);
+			saved.getPet(TEST_PET_ID).getVisits().stream().filter(Visit::isNew).forEach(v -> v.setId(7));
+			return saved;
+		});
+	}
+
+	private ResultActions postVisit(String json) throws Exception {
+		return mockMvc.perform(post("/api/owners/{ownerId}/pets/{petId}/visits", TEST_OWNER_ID, TEST_PET_ID)
+			.contentType(MediaType.APPLICATION_JSON)
+			.content(json));
 	}
 
 	@Test
-	void initNewVisitForm() throws Exception {
-		mockMvc.perform(get("/owners/{ownerId}/pets/{petId}/visits/new", TEST_OWNER_ID, TEST_PET_ID))
+	void listVisits() throws Exception {
+		mockMvc.perform(get("/api/owners/{ownerId}/pets/{petId}/visits", TEST_OWNER_ID, TEST_PET_ID))
 			.andExpect(status().isOk())
-			.andExpect(view().name("pets/createOrUpdateVisitForm"));
+			.andExpect(jsonPath("$", hasSize(1)))
+			.andExpect(jsonPath("$[0].date").value("2024-05-01"))
+			.andExpect(jsonPath("$[0].description").value("rabies shot"));
 	}
 
 	@Test
-	void processNewVisitFormSuccess() throws Exception {
-		mockMvc
-			.perform(post("/owners/{ownerId}/pets/{petId}/visits/new", TEST_OWNER_ID, TEST_PET_ID)
-				.param("name", "George")
-				.param("date", LocalDate.now().plusDays(1).toString())
-				.param("description", "Visit Description"))
-			.andExpect(status().is3xxRedirection())
-			.andExpect(view().name("redirect:/owners/{ownerId}"));
+	void listVisitsOfUnknownPet() throws Exception {
+		mockMvc.perform(get("/api/owners/{ownerId}/pets/{petId}/visits", TEST_OWNER_ID, 999))
+			.andExpect(status().isNotFound());
 	}
 
 	@Test
-	void processNewVisitFormHasErrors() throws Exception {
-		mockMvc
-			.perform(post("/owners/{ownerId}/pets/{petId}/visits/new", TEST_OWNER_ID, TEST_PET_ID).param("name",
-					"George"))
-			.andExpect(model().attributeHasErrors("visit"))
-			.andExpect(status().isOk())
-			.andExpect(view().name("pets/createOrUpdateVisitForm"));
+	void createVisit() throws Exception {
+		String tomorrow = LocalDate.now().plusDays(1).toString();
+		postVisit("""
+				{"date": "%s", "description": "Visit Description"}""".formatted(tomorrow))
+			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.id").value(7))
+			.andExpect(jsonPath("$.date").value(tomorrow))
+			.andExpect(jsonPath("$.description").value("Visit Description"));
 	}
 
 	@Test
-	void processNewVisitFormHasErrorsWhenVisitDateIsNotInFuture() throws Exception {
-		mockMvc
-			.perform(post("/owners/{ownerId}/pets/{petId}/visits/new", TEST_OWNER_ID, TEST_PET_ID)
-				.param("name", "George")
-				.param("date", LocalDate.now().toString())
-				.param("description", "Visit Description"))
-			.andExpect(model().attributeHasFieldErrors("visit", "date"))
-			.andExpect(model().attributeHasFieldErrorCode("visit", "date", "typeMismatch.visitDate"))
-			.andExpect(status().isOk())
-			.andExpect(view().name("pets/createOrUpdateVisitForm"));
+	void createVisitWithMissingFields() throws Exception {
+		postVisit("{}").andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.errors[?(@.field == 'date')].code").value("NotNull"))
+			.andExpect(jsonPath("$.errors[?(@.field == 'description')].code").value("NotBlank"));
+		verify(this.owners, never()).save(any(Owner.class));
 	}
 
 	@Test
-	void processNewVisitFormHasErrorsWhenDescriptionIsTooLong() throws Exception {
-		mockMvc
-			.perform(post("/owners/{ownerId}/pets/{petId}/visits/new", TEST_OWNER_ID, TEST_PET_ID)
-				.param("name", "George")
-				.param("date", LocalDate.now().plusDays(1).toString())
-				.param("description", "a".repeat(256)))
-			.andExpect(model().attributeHasFieldErrors("visit", "description"))
-			.andExpect(status().isOk())
-			.andExpect(view().name("pets/createOrUpdateVisitForm"));
+	void createVisitWithTodayIsRejected() throws Exception {
+		postVisit("""
+				{"date": "%s", "description": "Visit Description"}""".formatted(LocalDate.now()))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.errors[?(@.field == 'date')].code").value("typeMismatch.visitDate"))
+			.andExpect(jsonPath("$.errors[?(@.field == 'date')].message").value("Visit date must be in the future"));
+		verify(this.owners, never()).save(any(Owner.class));
 	}
 
 }

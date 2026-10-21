@@ -16,99 +16,89 @@
 package org.springframework.samples.petclinic.owner;
 
 import java.time.LocalDate;
-import java.util.Map;
-import java.util.Optional;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
-import org.springframework.stereotype.Controller;
-import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.WebDataBinder;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.samples.petclinic.system.ApiValidationException;
+import org.springframework.samples.petclinic.system.ResourceNotFoundException;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.Errors;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.InitBinder;
-import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
+ * REST API for listing and booking the visits of a pet.
+ *
  * @author Juergen Hoeller
  * @author Ken Krebs
  * @author Arjen Poutsma
  * @author Michael Isvy
  * @author Dave Syer
- * @author Wick Dynex
  */
-@Controller
+@RestController
+@RequestMapping("/api/owners/{ownerId}/pets/{petId}/visits")
 class VisitController {
 
 	private final OwnerRepository owners;
 
-	public VisitController(OwnerRepository owners) {
+	VisitController(OwnerRepository owners) {
 		this.owners = owners;
 	}
 
-	@InitBinder
-	public void setAllowedFields(WebDataBinder dataBinder) {
-		dataBinder.setDisallowedFields("id", "*.id");
+	@GetMapping
+	List<VisitDetails> listVisits(@PathVariable int ownerId, @PathVariable int petId) {
+		return findPet(findOwner(ownerId), petId).getVisits().stream().map(VisitDetails::from).toList();
 	}
 
-	/**
-	 * Called before each and every @RequestMapping annotated method. 2 goals: - Make sure
-	 * we always have fresh data - Since we do not use the session scope, make sure that
-	 * Pet object always has an id (Even though id is not part of the form fields)
-	 * @param petId
-	 * @return Pet
-	 */
-	@ModelAttribute("visit")
-	public Visit loadPetWithVisit(@PathVariable("ownerId") int ownerId, @PathVariable("petId") int petId,
-			Map<String, Object> model) {
-		Optional<Owner> optionalOwner = owners.findById(ownerId);
-		Owner owner = optionalOwner.orElseThrow(() -> new IllegalArgumentException(
-				"Owner not found with id: " + ownerId + ". Please ensure the ID is correct "));
-
-		Pet pet = owner.getPet(petId);
-		if (pet == null) {
-			throw new IllegalArgumentException(
-					"Pet with id " + petId + " not found for owner with id " + ownerId + ".");
-		}
-		model.put("pet", pet);
-		model.put("owner", owner);
+	@PostMapping
+	ResponseEntity<VisitDetails> createVisit(@PathVariable int ownerId, @PathVariable int petId,
+			@Valid @RequestBody VisitRequest request) {
+		Owner owner = findOwner(ownerId);
+		Set<Integer> existingVisitIds = findPet(owner, petId).getVisits()
+			.stream()
+			.map(Visit::getId)
+			.collect(Collectors.toSet());
 
 		Visit visit = new Visit();
-		pet.addVisit(visit);
-		return visit;
-	}
-
-	@ModelAttribute("minVisitDate")
-	public LocalDate minVisitDate() {
-		return LocalDate.now().plusDays(1);
-	}
-
-	// Spring MVC calls method loadPetWithVisit(...) before initNewVisitForm is
-	// called
-	@GetMapping("/owners/{ownerId}/pets/{petId}/visits/new")
-	public String initNewVisitForm() {
-		return "pets/createOrUpdateVisitForm";
-	}
-
-	// Spring MVC calls method loadPetWithVisit(...) before processNewVisitForm is
-	// called
-	@PostMapping("/owners/{ownerId}/pets/{petId}/visits/new")
-	public String processNewVisitForm(@ModelAttribute Owner owner, @PathVariable int petId, @Valid Visit visit,
-			BindingResult result, RedirectAttributes redirectAttributes) {
-		if (visit.getDate() != null && !visit.getDate().isAfter(LocalDate.now())) {
-			result.rejectValue("date", "typeMismatch.visitDate");
-		}
-
-		if (result.hasErrors()) {
-			return "pets/createOrUpdateVisitForm";
+		visit.setDate(request.date());
+		visit.setDescription(request.description());
+		Errors errors = new BeanPropertyBindingResult(visit, "visit");
+		if (!visit.getDate().isAfter(LocalDate.now())) {
+			errors.rejectValue("date", "typeMismatch.visitDate");
+			throw new ApiValidationException(errors);
 		}
 
 		owner.addVisit(petId, visit);
-		this.owners.save(owner);
-		redirectAttributes.addFlashAttribute("message", "Your visit has been booked");
-		return "redirect:/owners/{ownerId}";
+		Owner saved = this.owners.save(owner);
+		Visit created = saved.getPet(petId)
+			.getVisits()
+			.stream()
+			.filter(candidate -> !existingVisitIds.contains(candidate.getId()))
+			.findFirst()
+			.orElseThrow();
+		return ResponseEntity.status(HttpStatus.CREATED).body(VisitDetails.from(created));
+	}
+
+	private Owner findOwner(int ownerId) {
+		return this.owners.findById(ownerId)
+			.orElseThrow(() -> new ResourceNotFoundException("Owner " + ownerId + " not found"));
+	}
+
+	private static Pet findPet(Owner owner, int petId) {
+		Pet pet = owner.getPet(petId);
+		if (pet == null) {
+			throw new ResourceNotFoundException("Pet " + petId + " not found for owner " + owner.getId());
+		}
+		return pet;
 	}
 
 }

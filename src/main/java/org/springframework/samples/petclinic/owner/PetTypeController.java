@@ -13,25 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.samples.petclinic.system;
+package org.springframework.samples.petclinic.owner;
 
-import org.springframework.stereotype.Controller;
+import java.util.List;
+
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Controller used to showcase what happens when an exception is thrown
- *
- * @author Michael Isvy
- * <p/>
- * Also see how a view that resolves to "error" has been added ("error.html").
+ * REST API listing the pet types a pet can be registered with.
  */
-@Controller
-class CrashController {
+@RestController
+class PetTypeController {
 
-	@GetMapping("/oups")
-	public String triggerException() {
-		throw new RuntimeException(
-				"Expected: controller used to showcase what " + "happens when an exception is thrown");
+	private final PetTypeRepository types;
+
+	PetTypeController(PetTypeRepository types) {
+		this.types = types;
+	}
+
+	@GetMapping("/api/pettypes")
+	List<PetTypeDetails> listPetTypes() {
+		return this.types.findPetTypes().stream().map(PetTypeDetails::from).toList();
 	}
 
 }

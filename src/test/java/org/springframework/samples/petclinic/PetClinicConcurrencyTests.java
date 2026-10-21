@@ -17,12 +17,11 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.restclient.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.samples.petclinic.owner.OwnerRepository;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
@@ -38,7 +37,7 @@ public class PetClinicConcurrencyTests {
 	private RestTemplateBuilder restTemplateBuilder;
 
 	@Test
-	public void testDuplicatePetNameRaceConditionIsBlocked() throws Exception {
+	public void concurrentPetsWithTheSameNameAreBothSaved() throws Exception {
 		int ownerId = 1;
 		Optional<Owner> initialOwnerOpt = ownerRepository.findById(ownerId);
 		assertThat(initialOwnerOpt).isPresent();
@@ -47,7 +46,7 @@ public class PetClinicConcurrencyTests {
 		int initialPetCount = owner.getPets().size();
 		String duplicatePetName = "ConcurrencyTestPet";
 
-		// Ensure duplicate pet name does not exist yet
+		// Ensure the pet name does not exist yet
 		assertThat(owner.getPet(duplicatePetName)).isNull();
 
 		RestTemplate template = restTemplateBuilder.baseUri("http://localhost:" + port).build();
@@ -68,23 +67,18 @@ public class PetClinicConcurrencyTests {
 					startLatch.await(); // Wait to start simultaneously
 
 					HttpHeaders headers = new HttpHeaders();
-					headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+					headers.setContentType(MediaType.APPLICATION_JSON);
 
-					MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
-					map.add("name", duplicatePetName);
-					map.add("birthDate", "2020-01-01");
-					map.add("type", "cat");
+					String json = """
+							{"name": "%s", "birthDate": "2020-01-01", "typeId": 1}""".formatted(duplicatePetName);
 
-					HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(map, headers);
+					HttpEntity<String> request = new HttpEntity<>(json, headers);
 
-					ResponseEntity<String> response = template.postForEntity("/owners/" + ownerId + "/pets/new",
+					// any 4xx/5xx answer is thrown by RestTemplate and counted as failure
+					ResponseEntity<String> response = template.postForEntity("/api/owners/" + ownerId + "/pets",
 							request, String.class);
 
-					String body = response.getBody();
-					// If the response page contains the duplicate validation error, it
-					// was blocked
-					if (response.getStatusCode().is2xxSuccessful()
-							&& (body == null || !body.contains("is already in use"))) {
+					if (response.getStatusCode() == HttpStatus.CREATED) {
 						successCount.incrementAndGet();
 					}
 					else {
@@ -120,15 +114,16 @@ public class PetClinicConcurrencyTests {
 		System.out.println("Original Pet Count: " + initialPetCount);
 		System.out.println("Final Pet Count: " + newPetCount);
 
-		// With the fix, exactly ONE concurrent request must succeed
-		assertThat(successCount.get()).isEqualTo(1);
-		assertThat(newPetCount).isEqualTo(initialPetCount + 1);
+		// Pet names may repeat within an owner: both concurrent requests must be saved,
+		// and neither may drop the pet created by the other request
+		assertThat(successCount.get()).isEqualTo(threadCount);
+		assertThat(newPetCount).isEqualTo(initialPetCount + threadCount);
 
 		long countWithDuplicateName = updatedOwner.getPets()
 			.stream()
 			.filter(p -> duplicatePetName.equalsIgnoreCase(p.getName()))
 			.count();
-		assertThat(countWithDuplicateName).isEqualTo(1);
+		assertThat(countWithDuplicateName).isEqualTo(threadCount);
 	}
 
 }

@@ -13,18 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.springframework.samples.petclinic.owner;
 
-package org.springframework.samples.petclinic.system;
+/**
+ * Pet type (cat, dog, ...).
+ */
+public record PetTypeDetails(Integer id, String name) {
 
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-
-@Controller
-class WelcomeController {
-
-	@GetMapping("/")
-	public String welcome() {
-		return "welcome";
+	static PetTypeDetails from(PetType type) {
+		return new PetTypeDetails(type.getId(), type.getName());
 	}
 
 }

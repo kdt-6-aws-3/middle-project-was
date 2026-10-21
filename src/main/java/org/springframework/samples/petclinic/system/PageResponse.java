@@ -13,31 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.samples.petclinic.vet;
+package org.springframework.samples.petclinic.system;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
-import jakarta.xml.bind.annotation.XmlElement;
-import jakarta.xml.bind.annotation.XmlRootElement;
+import org.springframework.data.domain.Page;
 
 /**
- * Simple domain object representing a list of veterinarians. Mostly here to be used for
- * the 'vets' {@link org.springframework.web.servlet.view.xml.MarshallingView}.
- *
- * @author Arjen Poutsma
+ * Stable JSON shape for paginated results. Page numbers are 1-based, as in the original
+ * PetClinic screens.
  */
-@XmlRootElement
-public class Vets {
+public record PageResponse<T>(List<T> content, int page, int size, long totalElements, int totalPages) {
 
-	private List<Vet> vets;
-
-	@XmlElement
-	public List<Vet> getVetList() {
-		if (vets == null) {
-			vets = new ArrayList<>();
-		}
-		return vets;
+	public static <S, T> PageResponse<T> from(Page<S> page, Function<S, T> mapper) {
+		return new PageResponse<>(page.getContent().stream().map(mapper).toList(), page.getNumber() + 1, page.getSize(),
+				page.getTotalElements(), page.getTotalPages());
 	}
 
 }

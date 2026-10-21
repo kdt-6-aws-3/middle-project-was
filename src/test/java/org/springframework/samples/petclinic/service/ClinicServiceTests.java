@@ -17,9 +17,7 @@
 package org.springframework.samples.petclinic.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import org.springframework.dao.DataIntegrityViolationException;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.Optional;
@@ -252,10 +250,11 @@ class ClinicServiceTests {
 
 	@Test
 	@Transactional
-	void shouldFailToInsertDuplicatePetNameForSameOwner() {
+	void shouldAllowDuplicatePetNameForSameOwner() {
 		Optional<Owner> optionalOwner = this.owners.findById(1);
 		assertThat(optionalOwner).isPresent();
 		Owner owner = optionalOwner.get();
+		int initialPetCount = owner.getPets().size();
 
 		Pet pet1 = new Pet();
 		pet1.setName("DuplicatePetName");
@@ -266,14 +265,15 @@ class ClinicServiceTests {
 		this.owners.saveAndFlush(owner);
 
 		Pet pet2 = new Pet();
-		pet2.setName("duplicatepetname"); // Case-insensitive duplicate name
+		pet2.setName("duplicatepetname"); // same name, different case
 		pet2.setType(EntityUtils.getById(types, PetType.class, 1));
 		pet2.setBirthDate(LocalDate.now());
 		owner.addPet(pet2);
+		this.owners.saveAndFlush(owner);
 
-		assertThrows(DataIntegrityViolationException.class, () -> {
-			this.owners.saveAndFlush(owner);
-		});
+		Owner reloaded = this.owners.findById(1).orElseThrow();
+		assertThat(reloaded.getPets()).hasSize(initialPetCount + 2);
+		assertThat(reloaded.getPets()).filteredOn(pet -> "duplicatepetname".equalsIgnoreCase(pet.getName())).hasSize(2);
 	}
 
 	@Test
