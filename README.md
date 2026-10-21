@@ -42,6 +42,23 @@ AWS 3-Tier(WEB · WAS · DB) 인프라 구축 프로젝트의 **WAS 계층** 애
 | DB | H2(기본, 개발용) / MySQL(`mysql` 프로파일) |
 | 빌드 | Maven Wrapper(`mvnw`), Gradle Wrapper(`gradlew`) |
 
+## 패키지 구조
+
+계층별로 나눴습니다. 요청은 `controller → service → repository` 순서로 흐릅니다.
+
+```text
+org.springframework.samples.petclinic
+├── controller   REST 컨트롤러 (요청·응답 변환만)
+├── service      업무 로직과 검증 (PetValidator 포함)
+├── repository   Spring Data JPA 리포지토리
+├── entity       JPA 엔티티 (Owner, Pet, PetType, Visit, Vet, Specialty 등)
+├── dto          요청·응답 JSON (…Request, …Details, …Summary, PageResponse)
+├── exception    예외와 오류 응답 처리 (RFC 9457)
+└── config       캐시 설정
+```
+
+반려동물과 방문 기록은 보호자에 딸린 데이터라 별도 리포지토리 없이 `OwnerRepository`로 보호자와 함께 저장합니다.
+
 ## API
 
 전체 명세는 [docs/api.md](docs/api.md)에 있습니다.
