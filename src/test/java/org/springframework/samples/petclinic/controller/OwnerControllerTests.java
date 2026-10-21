@@ -50,6 +50,7 @@ import org.springframework.samples.petclinic.entity.Owner;
 import org.springframework.samples.petclinic.entity.Pet;
 import org.springframework.samples.petclinic.entity.PetType;
 import org.springframework.samples.petclinic.entity.Visit;
+import org.springframework.samples.petclinic.repository.AppointmentRepository;
 import org.springframework.samples.petclinic.repository.OwnerRepository;
 import org.springframework.samples.petclinic.service.OwnerService;
 import org.springframework.test.context.aot.DisabledInAotMode;
@@ -78,6 +79,9 @@ class OwnerControllerTests {
 
 	@MockitoBean
 	private OwnerRepository owners;
+
+	@MockitoBean
+	private AppointmentRepository appointments;
 
 	private Owner george;
 
@@ -248,6 +252,8 @@ class OwnerControllerTests {
 	@Test
 	void deleteOwner() throws Exception {
 		mockMvc.perform(delete("/api/owners/{ownerId}", TEST_OWNER_ID)).andExpect(status().isNoContent());
+		// appointments.pet_id has no ON DELETE CASCADE: the pets' appointments go first
+		verify(this.appointments).deleteByPetIds(List.of(1));
 		verify(this.owners).delete(this.george);
 	}
 

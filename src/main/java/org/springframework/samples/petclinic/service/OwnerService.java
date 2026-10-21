@@ -18,12 +18,16 @@ package org.springframework.samples.petclinic.service;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import java.util.List;
+
 import org.springframework.samples.petclinic.dto.OwnerDetails;
 import org.springframework.samples.petclinic.dto.OwnerRequest;
 import org.springframework.samples.petclinic.dto.OwnerSummary;
 import org.springframework.samples.petclinic.dto.PageResponse;
 import org.springframework.samples.petclinic.entity.Owner;
+import org.springframework.samples.petclinic.entity.Pet;
 import org.springframework.samples.petclinic.exception.ResourceNotFoundException;
+import org.springframework.samples.petclinic.repository.AppointmentRepository;
 import org.springframework.samples.petclinic.repository.OwnerRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,8 +42,11 @@ public class OwnerService {
 
 	private final OwnerRepository owners;
 
-	public OwnerService(OwnerRepository owners) {
+	private final AppointmentRepository appointments;
+
+	public OwnerService(OwnerRepository owners, AppointmentRepository appointments) {
 		this.owners = owners;
+		this.appointments = appointments;
 	}
 
 	/**
@@ -72,12 +79,17 @@ public class OwnerService {
 	}
 
 	/**
-	 * Deletes the owner together with their pets and visits (the foreign keys have no ON
-	 * DELETE CASCADE, so the children are deleted first by JPA).
+	 * Deletes the owner together with their pets, visits and appointments (the foreign
+	 * keys have no ON DELETE CASCADE, so the children are deleted first).
 	 */
 	@Transactional
 	public void deleteOwner(int ownerId) {
-		this.owners.delete(findOwner(ownerId));
+		Owner owner = findOwner(ownerId);
+		List<Integer> petIds = owner.getPets().stream().map(Pet::getId).toList();
+		if (!petIds.isEmpty()) {
+			this.appointments.deleteByPetIds(petIds);
+		}
+		this.owners.delete(owner);
 	}
 
 	private Owner findOwner(int ownerId) {

@@ -54,3 +54,17 @@ CREATE TABLE visits (
     description VARCHAR(255) NOT NULL,
     FOREIGN KEY (pet_id) REFERENCES pets(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE appointments (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    hospital_id INT UNSIGNED NOT NULL,
+    pet_id INT UNSIGNED NOT NULL,
+    vet_id INT UNSIGNED NOT NULL,
+    appointment_at DATETIME NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    reason VARCHAR(255) NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (hospital_id) REFERENCES hospitals(id),
+    FOREIGN KEY (pet_id) REFERENCES pets(id),
+    FOREIGN KEY (vet_id) REFERENCES vets(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

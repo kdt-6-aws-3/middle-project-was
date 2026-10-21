@@ -122,6 +122,25 @@ INSERT INTO visits (id, pet_id, visit_date, description) VALUES
 
 -- 반려동물 10번은 아직 방문 이력 없음
 
+-- ==================================================
+-- 9. 진료 예약
+-- 상태: REQUESTED(요청), CONFIRMED(확정), CANCELLED(취소), COMPLETED(완료)
+-- 담당 수의사는 예약 병원 소속(vet N -> hospital N), 완료 예약은 방문 기록과 같은 날짜
+-- ==================================================
+INSERT INTO appointments (id, hospital_id, pet_id, vet_id, appointment_at, status, reason, created_at) VALUES
+(1,  1, 1,  1, '2026-09-01 10:00:00', 'COMPLETED', '정기 건강검진',         '2026-08-25 09:12:00'),
+(2,  1, 1,  1, '2026-10-01 11:00:00', 'COMPLETED', '예방접종',              '2026-09-20 14:03:00'),
+(3,  1, 2,  1, '2026-09-03 15:30:00', 'COMPLETED', '귀 가려움',             '2026-09-01 18:40:00'),
+(4,  2, 3,  2, '2026-10-28 10:30:00', 'CONFIRMED', '관절 상태 재검진',      '2026-10-15 09:00:00'),
+(5,  3, 4,  3, '2026-10-29 14:00:00', 'REQUESTED', '식욕 저하 재검진',      '2026-10-20 20:15:00'),
+(6,  4, 5,  4, '2026-10-30 16:00:00', 'REQUESTED', '발톱 정리',             '2026-10-21 08:30:00'),
+(7,  5, 6,  5, '2026-10-22 13:00:00', 'CANCELLED', '치아 스케일링 상담',    '2026-10-10 11:20:00'),
+(8,  6, 7,  6, '2026-11-02 10:00:00', 'CONFIRMED', '정기 건강검진',         '2026-10-18 16:45:00'),
+(9,  8, 9,  8, '2026-11-05 11:30:00', 'REQUESTED', '깃털 상태 확인',        '2026-10-21 10:05:00'),
+(10, 9, 10, 9, '2026-11-06 15:00:00', 'REQUESTED', NULL,                    '2026-10-21 11:40:00');
+
+-- 반려동물 8번은 예약 이력 없음, 예약 10번은 사유 미입력
+
 -- Rows were inserted with explicit ids, so move each identity past them
 ALTER TABLE hospitals ALTER COLUMN id RESTART WITH 11;
 ALTER TABLE specialties ALTER COLUMN id RESTART WITH 6;
@@ -130,3 +149,4 @@ ALTER TABLE owners ALTER COLUMN id RESTART WITH 11;
 ALTER TABLE types ALTER COLUMN id RESTART WITH 7;
 ALTER TABLE pets ALTER COLUMN id RESTART WITH 11;
 ALTER TABLE visits ALTER COLUMN id RESTART WITH 13;
+ALTER TABLE appointments ALTER COLUMN id RESTART WITH 11;

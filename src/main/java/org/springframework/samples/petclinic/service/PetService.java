@@ -17,6 +17,7 @@
 package org.springframework.samples.petclinic.service;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -27,6 +28,7 @@ import org.springframework.samples.petclinic.entity.Owner;
 import org.springframework.samples.petclinic.entity.Pet;
 import org.springframework.samples.petclinic.exception.ApiValidationException;
 import org.springframework.samples.petclinic.exception.ResourceNotFoundException;
+import org.springframework.samples.petclinic.repository.AppointmentRepository;
 import org.springframework.samples.petclinic.repository.OwnerRepository;
 import org.springframework.samples.petclinic.repository.PetTypeRepository;
 import org.springframework.stereotype.Service;
@@ -50,9 +52,12 @@ public class PetService {
 
 	private final PetTypeRepository types;
 
-	public PetService(OwnerRepository owners, PetTypeRepository types) {
+	private final AppointmentRepository appointments;
+
+	public PetService(OwnerRepository owners, PetTypeRepository types, AppointmentRepository appointments) {
 		this.owners = owners;
 		this.types = types;
+		this.appointments = appointments;
 	}
 
 	public PetDetails getPet(int ownerId, int petId) {
@@ -91,12 +96,14 @@ public class PetService {
 	}
 
 	/**
-	 * Deletes the pet together with its visits.
+	 * Deletes the pet together with its visits and appointments.
 	 */
 	@Transactional
 	public void deletePet(int ownerId, int petId) {
 		Owner owner = findOwner(ownerId);
-		owner.removePet(findPet(owner, petId));
+		Pet pet = findPet(owner, petId);
+		this.appointments.deleteByPetIds(List.of(petId));
+		owner.removePet(pet);
 		this.owners.save(owner);
 	}
 

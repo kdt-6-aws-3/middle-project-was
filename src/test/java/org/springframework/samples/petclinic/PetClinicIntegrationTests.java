@@ -133,11 +133,23 @@ public class PetClinicIntegrationTests {
 			.body("{\"date\":\"" + tomorrow + "\",\"description\":\"follow-up\"}"));
 		assertThat(updated.getBody()).contains("follow-up");
 
+		ResponseEntity<String> appointment = send(RequestEntity.post("/api/appointments")
+			.contentType(MediaType.APPLICATION_JSON)
+			.body("{\"hospitalId\":1,\"petId\":" + petId + ",\"vetId\":1,\"appointmentAt\":\"" + tomorrow
+					+ "T10:00:00\",\"reason\":\"checkup\"}"));
+		assertThat(appointment.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+		assertThat(appointment.getBody()).contains("\"status\":\"REQUESTED\"");
+		int appointmentId = idOf(appointment);
+		assertThat(send(RequestEntity.patch("/api/appointments/" + appointmentId + "/status")
+			.contentType(MediaType.APPLICATION_JSON)
+			.body("{\"status\":\"CONFIRMED\"}")).getBody()).contains("\"status\":\"CONFIRMED\"");
+
 		assertThat(send(RequestEntity.delete(visits + "/" + visitId).build()).getStatusCode())
 			.isEqualTo(HttpStatus.NO_CONTENT);
 		assertThat(send(RequestEntity.get(visits).build()).getBody()).isEqualTo("[]");
 
-		// a second visit stays, so deleting the owner must also delete pet and visit
+		// a second visit and the appointment stay, so deleting the owner must also delete
+		// the appointment, the visit and the pet
 		send(RequestEntity.post(visits)
 			.contentType(MediaType.APPLICATION_JSON)
 			.body("{\"date\":\"" + tomorrow + "\",\"description\":\"again\"}"));
@@ -147,6 +159,15 @@ public class PetClinicIntegrationTests {
 		HttpClientErrorException ex = catchThrowableOfType(HttpClientErrorException.class,
 				() -> send(RequestEntity.get("/api/owners/" + ownerId).build()));
 		assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+		ex = catchThrowableOfType(HttpClientErrorException.class,
+				() -> send(RequestEntity.get("/api/appointments/" + appointmentId).build()));
+		assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+	}
+
+	@Test
+	void appointmentsAreListedFromTheSampleData() {
+		assertThat(send(RequestEntity.get("/api/appointments?status=CANCELLED").build()).getBody())
+			.contains("\"reason\":\"치아 스케일링 상담\"");
 	}
 
 	@Test

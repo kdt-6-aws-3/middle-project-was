@@ -18,6 +18,7 @@ package org.springframework.samples.petclinic.repository;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataAccessException;
@@ -57,6 +58,9 @@ public interface VetRepository extends Repository<Vet, Integer> {
 	@Transactional(readOnly = true)
 	@Cacheable("vets")
 	Page<Vet> findAll(Pageable pageable) throws DataAccessException;
+
+	@Transactional(readOnly = true)
+	Optional<Vet> findById(Integer id) throws DataAccessException;
 
 	/**
 	 * Retrieve the <code>Vet</code>s working at the given hospital.

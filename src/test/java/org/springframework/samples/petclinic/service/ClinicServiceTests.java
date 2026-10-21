@@ -19,6 +19,7 @@ package org.springframework.samples.petclinic.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -31,12 +32,15 @@ import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabas
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.samples.petclinic.entity.Appointment;
+import org.springframework.samples.petclinic.entity.AppointmentStatus;
 import org.springframework.samples.petclinic.entity.Hospital;
 import org.springframework.samples.petclinic.entity.Owner;
 import org.springframework.samples.petclinic.entity.Pet;
 import org.springframework.samples.petclinic.entity.PetType;
 import org.springframework.samples.petclinic.entity.Vet;
 import org.springframework.samples.petclinic.entity.Visit;
+import org.springframework.samples.petclinic.repository.AppointmentRepository;
 import org.springframework.samples.petclinic.repository.HospitalRepository;
 import org.springframework.samples.petclinic.repository.OwnerRepository;
 import org.springframework.samples.petclinic.repository.PetTypeRepository;
@@ -70,6 +74,9 @@ class ClinicServiceTests {
 
 	@Autowired
 	protected HospitalRepository hospitals;
+
+	@Autowired
+	protected AppointmentRepository appointments;
 
 	@Autowired
 	private TestEntityManager entityManager;
@@ -156,9 +163,13 @@ class ClinicServiceTests {
 	@Test
 	@Transactional
 	void shouldDeleteOwnerWithPetsAndVisits() {
-		// owner 1 has two pets, and both have visits: the foreign keys have no ON DELETE
-		// CASCADE, so this only works if JPA deletes visits, then pets, then the owner
-		this.owners.delete(this.owners.findById(1).orElseThrow());
+		// owner 1 has two pets with visits and appointments: the foreign keys have no ON
+		// DELETE CASCADE, so appointments are deleted first (as OwnerService does), then
+		// JPA
+		// deletes visits, pets and the owner
+		Owner owner1 = this.owners.findById(1).orElseThrow();
+		this.appointments.deleteByPetIds(owner1.getPets().stream().map(Pet::getId).toList());
+		this.owners.delete(owner1);
 		flushAndClear();
 
 		assertThat(this.owners.findById(1)).isEmpty();
@@ -211,6 +222,7 @@ class ClinicServiceTests {
 	@Transactional
 	void shouldDeletePetWithVisits() {
 		Owner owner1 = this.owners.findById(1).orElseThrow();
+		this.appointments.deleteByPetIds(List.of(1));
 		owner1.removePet(owner1.getPet(1));
 		this.owners.save(owner1);
 		flushAndClear();
@@ -233,6 +245,34 @@ class ClinicServiceTests {
 		assertThat(vet.getSpecialties().get(1).getName()).isEqualTo("영상의학과");
 
 		assertThat(EntityUtils.getById(vets, Vet.class, 10).getSpecialties()).isEmpty();
+	}
+
+	@Test
+	void shouldSearchAppointments() {
+		assertThat(this.appointments.findAll()).hasSize(10);
+		assertThat(this.appointments.search(null, null, null, AppointmentStatus.COMPLETED))
+			.extracting(Appointment::getId)
+			.containsExactly(1, 3, 2);
+		assertThat(this.appointments.search(1, 1, 2, null)).extracting(Appointment::getReason).containsExactly("귀 가려움");
+		assertThat(this.appointments.findById(10).orElseThrow().getReason()).isNull();
+	}
+
+	@Test
+	@Transactional
+	void shouldInsertAppointmentWithCreationTime() {
+		Appointment appointment = new Appointment();
+		appointment.setHospital(this.hospitals.findById(1).orElseThrow());
+		appointment.setVet(this.vets.findById(1).orElseThrow());
+		appointment.setPet(this.owners.findById(1).orElseThrow().getPet(1));
+		appointment.setAppointmentAt(LocalDateTime.now().plusDays(1));
+		appointment.setStatus(AppointmentStatus.REQUESTED);
+		this.appointments.saveAndFlush(appointment);
+		flushAndClear();
+
+		Appointment reloaded = this.appointments.findById(appointment.getId()).orElseThrow();
+		assertThat(reloaded.getCreatedAt()).isNotNull();
+		assertThat(reloaded.getStatus()).isEqualTo(AppointmentStatus.REQUESTED);
+		assertThat(reloaded.getVet().getName()).isEqualTo("김민준");
 	}
 
 	@Test

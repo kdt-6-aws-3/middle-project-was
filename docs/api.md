@@ -1,6 +1,6 @@
 # PetClinic REST API
 
-WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. DB 구조는 `src/main/resources/db/mysql/schema.sql`(병원·수의사·보호자·반려동물·방문 기록)을 따릅니다.
+WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. DB 구조는 `src/main/resources/db/mysql/schema.sql`(병원·수의사·보호자·반려동물·방문 기록·진료 예약)을 따릅니다.
 
 - 기본 경로: `/api` (WEB의 Apache가 `/api` 요청만 내부 ALB를 거쳐 WAS로 전달)
 - 형식: 요청·응답 모두 `application/json`, 문자 인코딩 UTF-8
@@ -15,11 +15,11 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
 | GET | `/api/owners/{ownerId}` | 보호자 상세 (반려동물·방문 기록 포함) |
 | POST | `/api/owners` | 보호자 등록 |
 | PUT | `/api/owners/{ownerId}` | 보호자 수정 |
-| DELETE | `/api/owners/{ownerId}` | 보호자 삭제 (반려동물·방문 기록도 함께 삭제) |
+| DELETE | `/api/owners/{ownerId}` | 보호자 삭제 (반려동물·방문 기록·예약도 함께 삭제) |
 | GET | `/api/owners/{ownerId}/pets/{petId}` | 반려동물 상세 (방문 기록 포함) |
 | POST | `/api/owners/{ownerId}/pets` | 반려동물 등록 |
 | PUT | `/api/owners/{ownerId}/pets/{petId}` | 반려동물 수정 |
-| DELETE | `/api/owners/{ownerId}/pets/{petId}` | 반려동물 삭제 (방문 기록도 함께 삭제) |
+| DELETE | `/api/owners/{ownerId}/pets/{petId}` | 반려동물 삭제 (방문 기록·예약도 함께 삭제) |
 | GET | `/api/owners/{ownerId}/pets/{petId}/visits` | 방문(진료) 기록 목록 |
 | POST | `/api/owners/{ownerId}/pets/{petId}/visits` | 방문 기록 등록 |
 | PUT | `/api/owners/{ownerId}/pets/{petId}/visits/{visitId}` | 방문 기록 수정 |
@@ -29,6 +29,12 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
 | GET | `/api/hospitals/{hospitalId}` | 병원 상세 |
 | GET | `/api/hospitals/{hospitalId}/vets` | 병원 소속 수의사 목록 |
 | GET | `/api/vets` | 수의사 목록 (병원·전문 분야 포함, 캐시) |
+| GET | `/api/appointments?hospitalId=&vetId=&petId=&status=` | 진료 예약 목록 (조건은 모두 선택) |
+| GET | `/api/appointments/{appointmentId}` | 진료 예약 상세 |
+| POST | `/api/appointments` | 진료 예약 등록 |
+| PUT | `/api/appointments/{appointmentId}` | 진료 예약 변경 (병원·반려동물·수의사·일시·사유) |
+| PATCH | `/api/appointments/{appointmentId}/status` | 진료 예약 상태 변경 |
+| DELETE | `/api/appointments/{appointmentId}` | 진료 예약 삭제 |
 
 병원·수의사·동물 종류·전문 분야는 화면에서 고르는 기준 데이터라 조회만 제공합니다. 데이터는 DB 담당이 관리합니다.
 
@@ -115,7 +121,7 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
 
 ### DELETE `/api/owners/{ownerId}`
 
-보호자의 반려동물과 그 방문 기록까지 함께 삭제합니다. 응답 `204`(본문 없음), 없는 보호자면 `404`.
+보호자의 반려동물과 그 방문 기록·진료 예약까지 함께 삭제합니다. 응답 `204`(본문 없음), 없는 보호자면 `404`.
 
 ## 동물 종류
 
@@ -155,7 +161,7 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
 
 ### DELETE `/api/owners/{ownerId}/pets/{petId}`
 
-반려동물과 그 방문 기록을 함께 삭제합니다. 응답 `204`, 보호자나 반려동물이 없으면 `404`.
+반려동물과 그 방문 기록·진료 예약을 함께 삭제합니다. 응답 `204`, 보호자나 반려동물이 없으면 `404`.
 
 ## 방문(진료) 기록
 
@@ -227,6 +233,86 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
 ]
 ```
 
+## 진료 예약
+
+- 일시: `yyyy-MM-ddTHH:mm:ss` (예: `2026-10-28T10:30:00`), 서버 시간대(Asia/Seoul) 기준
+- 상태: `REQUESTED`(요청) · `CONFIRMED`(확정) · `CANCELLED`(취소) · `COMPLETED`(완료). `CANCELLED`·`COMPLETED`는 최종 상태라 더 이상 변경할 수 없습니다.
+
+### GET `/api/appointments`
+
+| 파라미터 | 설명 |
+| --- | --- |
+| `hospitalId` | 이 병원의 예약만 |
+| `vetId` | 이 수의사의 예약만 |
+| `petId` | 이 반려동물의 예약만 |
+| `status` | 이 상태의 예약만 (위 4가지 값, 그 외 값은 `400`) |
+
+조건을 주지 않으면 전체이며, 응답 `200`: 예약 일시순
+
+```json
+[
+  {
+    "id": 4,
+    "hospitalId": 2,
+    "hospitalName": "펫클리닉 서초점",
+    "petId": 3,
+    "petName": "보리",
+    "vetId": 2,
+    "vetName": "이서연",
+    "appointmentAt": "2026-10-28T10:30:00",
+    "status": "CONFIRMED",
+    "reason": "관절 상태 재검진",
+    "createdAt": "2026-10-15T09:00:00"
+  }
+]
+```
+
+### GET `/api/appointments/{appointmentId}`
+
+응답 `200`: 위 목록 항목과 같은 형식. 없으면 `404`.
+
+### POST `/api/appointments`
+
+요청
+
+```json
+{ "hospitalId": 2, "petId": 3, "vetId": 2, "appointmentAt": "2026-10-28T10:30:00", "reason": "관절 상태 재검진" }
+```
+
+| 필드 | 규칙 |
+| --- | --- |
+| `hospitalId` | 필수, `/api/hospitals`의 ID |
+| `petId` | 필수, 반려동물 ID |
+| `vetId` | 필수, **예약 병원 소속** 수의사 (`/api/hospitals/{hospitalId}/vets`) |
+| `appointmentAt` | 필수, 현재 이후 일시 |
+| `reason` | 선택, 최대 255자 |
+
+새 예약은 `REQUESTED` 상태로 만들어지고 `createdAt`은 서버가 채웁니다. 응답 `201`, `Location: /api/appointments/{새 ID}`, 본문은 예약 상세.
+
+| 오류 코드 (`errors[].code`) | 경우 |
+| --- | --- |
+| `notFound` | 없는 병원·반려동물·수의사 ID |
+| `appointment.vetNotInHospital` | 수의사가 그 병원 소속이 아님 |
+| `appointment.notInFuture` | 현재 이전 일시 |
+
+### PUT `/api/appointments/{appointmentId}`
+
+요청·규칙은 등록과 같고 상태는 그대로 유지됩니다. 응답 `200`(예약 상세). `CANCELLED`·`COMPLETED` 예약이면 `400`(`appointment.closed`), 없으면 `404`.
+
+### PATCH `/api/appointments/{appointmentId}/status`
+
+요청
+
+```json
+{ "status": "CONFIRMED" }
+```
+
+응답 `200`(예약 상세). 이미 `CANCELLED`·`COMPLETED`인 예약이면 `400`(`appointment.closed`).
+
+### DELETE `/api/appointments/{appointmentId}`
+
+응답 `204`, 없으면 `404`. (기록을 남기려면 삭제 대신 상태를 `CANCELLED`로 바꿉니다)
+
 ## 오류 응답
 
 RFC 9457 Problem Details 형식(`application/problem+json`)입니다.
@@ -234,7 +320,7 @@ RFC 9457 Problem Details 형식(`application/problem+json`)입니다.
 | 상태 코드 | 경우 |
 | --- | --- |
 | `400` | 입력값 검증 실패, JSON 형식 오류, 잘못된 날짜 형식 |
-| `404` | 보호자·반려동물·방문 기록·병원이 없음, 없는 경로 |
+| `404` | 보호자·반려동물·방문 기록·병원·예약이 없음, 없는 경로 |
 | `500` | 서버 내부 오류 |
 
 검증 실패 예 (`400`)

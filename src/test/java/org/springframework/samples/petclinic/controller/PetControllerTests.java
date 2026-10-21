@@ -31,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -43,6 +44,7 @@ import org.springframework.http.MediaType;
 import org.springframework.samples.petclinic.entity.Owner;
 import org.springframework.samples.petclinic.entity.Pet;
 import org.springframework.samples.petclinic.entity.PetType;
+import org.springframework.samples.petclinic.repository.AppointmentRepository;
 import org.springframework.samples.petclinic.repository.OwnerRepository;
 import org.springframework.samples.petclinic.repository.PetTypeRepository;
 import org.springframework.samples.petclinic.service.PetService;
@@ -72,6 +74,9 @@ class PetControllerTests {
 
 	@MockitoBean
 	private OwnerRepository owners;
+
+	@MockitoBean
+	private AppointmentRepository appointments;
 
 	@MockitoBean
 	private PetTypeRepository types;
@@ -231,6 +236,7 @@ class PetControllerTests {
 			.andExpect(status().isNoContent());
 		assertThat(this.owner.getPet(TEST_PET_ID)).isNull();
 		assertThat(this.owner.getPets()).hasSize(1);
+		verify(this.appointments).deleteByPetIds(List.of(TEST_PET_ID));
 		verify(this.owners).save(this.owner);
 	}
 

@@ -51,13 +51,13 @@ org.springframework.samples.petclinic
 ├── controller   REST 컨트롤러 (요청·응답 변환만)
 ├── service      업무 로직과 검증 (PetValidator 포함)
 ├── repository   Spring Data JPA 리포지토리
-├── entity       JPA 엔티티 (Owner, Pet, PetType, Visit, Hospital, Vet, Specialty 등)
+├── entity       JPA 엔티티 (Owner, Pet, PetType, Visit, Hospital, Vet, Specialty, Appointment 등)
 ├── dto          요청·응답 JSON (…Request, …Details, …Summary, PageResponse)
 ├── exception    예외와 오류 응답 처리 (RFC 9457)
 └── config       캐시 설정
 ```
 
-반려동물과 방문 기록은 보호자에 딸린 데이터라 별도 리포지토리 없이 `OwnerRepository`로 보호자와 함께 저장·삭제합니다. DB의 외래 키에 `ON DELETE CASCADE`가 없으므로, 보호자를 지우면 JPA가 방문 기록 → 반려동물 → 보호자 순서로 지웁니다.
+반려동물과 방문 기록은 보호자에 딸린 데이터라 별도 리포지토리 없이 `OwnerRepository`로 보호자와 함께 저장·삭제합니다. DB의 외래 키에 `ON DELETE CASCADE`가 없으므로, 보호자나 반려동물을 지울 때는 진료 예약을 먼저 지우고, 이어서 JPA가 방문 기록 → 반려동물 → 보호자 순서로 지웁니다.
 
 ## API
 
@@ -71,6 +71,7 @@ org.springframework.samples.petclinic
 | GET · POST · PUT · DELETE | `/api/owners/{ownerId}/pets/{petId}/visits`, `…/visits/{visitId}` | 방문 기록 목록·등록·수정·삭제 |
 | GET | `/api/hospitals`, `/api/hospitals/{hospitalId}`, `/api/hospitals/{hospitalId}/vets` | 병원 목록·상세·소속 수의사 |
 | GET | `/api/vets` | 수의사 목록 (병원 포함) |
+| GET · POST · PUT · PATCH · DELETE | `/api/appointments`, `/api/appointments/{appointmentId}`, `…/status` | 진료 예약 목록·상세·등록·변경·상태 변경·삭제 |
 | GET | `/api/pettypes` | 동물 종류 목록 |
 | GET | `/actuator/health` | 헬스 체크 |
 
