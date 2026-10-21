@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -72,6 +73,16 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 	@ExceptionHandler(ResourceNotFoundException.class)
 	ProblemDetail handleNotFound(ResourceNotFoundException ex) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+	}
+
+	/**
+	 * A database constraint rejected the change, e.g. two requests booking the same slot
+	 * at the same moment (the second one hits the unique index).
+	 */
+	@ExceptionHandler(DataIntegrityViolationException.class)
+	ProblemDetail handleConflict(DataIntegrityViolationException ex) {
+		logger.warn("Request rejected by a database constraint: {}", ex.getMostSpecificCause().getMessage());
+		return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "The request conflicts with existing data");
 	}
 
 	@ExceptionHandler(Exception.class)

@@ -236,6 +236,8 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
 ## 진료 예약
 
 - 일시: `yyyy-MM-ddTHH:mm:ss` (예: `2026-10-28T10:30:00`), 서버 시간대(Asia/Seoul) 기준
+- **30분 단위**: 예약은 정각 또는 30분(`:00`, `:30`)에만 시작합니다.
+- **중복 금지**: 같은 수의사, 같은 반려동물은 같은 시각에 예약이 하나만 가능합니다. 취소(`CANCELLED`)된 예약은 빼고 따지므로, 취소된 시간은 다시 예약할 수 있습니다.
 - 상태: `REQUESTED`(요청) · `CONFIRMED`(확정) · `CANCELLED`(취소) · `COMPLETED`(완료). `CANCELLED`·`COMPLETED`는 최종 상태라 더 이상 변경할 수 없습니다.
 
 ### GET `/api/appointments`
@@ -284,7 +286,7 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
 | `hospitalId` | 필수, `/api/hospitals`의 ID |
 | `petId` | 필수, 반려동물 ID |
 | `vetId` | 필수, **예약 병원 소속** 수의사 (`/api/hospitals/{hospitalId}/vets`) |
-| `appointmentAt` | 필수, 현재 이후 일시 |
+| `appointmentAt` | 필수, 현재 이후 일시, 정각 또는 30분 |
 | `reason` | 선택, 최대 255자 |
 
 새 예약은 `REQUESTED` 상태로 만들어지고 `createdAt`은 서버가 채웁니다. 응답 `201`, `Location: /api/appointments/{새 ID}`, 본문은 예약 상세.
@@ -294,10 +296,15 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
 | `notFound` | 없는 병원·반려동물·수의사 ID |
 | `appointment.vetNotInHospital` | 수의사가 그 병원 소속이 아님 |
 | `appointment.notInFuture` | 현재 이전 일시 |
+| `appointment.notOnSlot` | 정각·30분이 아닌 일시 (예: `10:15`) |
+| `appointment.vetTimeTaken` | 수의사가 그 시각에 이미 예약됨 |
+| `appointment.petTimeTaken` | 반려동물이 그 시각에 이미 예약됨 |
+
+두 요청이 같은 시각을 **동시에** 예약하면 위 검사를 둘 다 통과할 수 있는데, 이때는 DB의 고유 인덱스가 두 번째 요청을 막고 `409 Conflict`(`"detail": "The request conflicts with existing data"`)로 응답합니다. 화면에서는 "방금 다른 예약이 먼저 잡혔습니다"처럼 안내하고 목록을 새로 불러오면 됩니다.
 
 ### PUT `/api/appointments/{appointmentId}`
 
-요청·규칙은 등록과 같고 상태는 그대로 유지됩니다. 응답 `200`(예약 상세). `CANCELLED`·`COMPLETED` 예약이면 `400`(`appointment.closed`), 없으면 `404`.
+요청·규칙은 등록과 같고(자기 자신의 기존 시각과는 겹쳐도 됨) 상태는 그대로 유지됩니다. 응답 `200`(예약 상세). `CANCELLED`·`COMPLETED` 예약이면 `400`(`appointment.closed`), 없으면 `404`.
 
 ### PATCH `/api/appointments/{appointmentId}/status`
 
@@ -320,6 +327,7 @@ RFC 9457 Problem Details 형식(`application/problem+json`)입니다.
 | 상태 코드 | 경우 |
 | --- | --- |
 | `400` | 입력값 검증 실패, JSON 형식 오류, 잘못된 날짜 형식 |
+| `409` | 동시에 들어온 요청이 DB 제약(예: 같은 예약 시각)에 걸림 |
 | `404` | 보호자·반려동물·방문 기록·병원·예약이 없음, 없는 경로 |
 | `500` | 서버 내부 오류 |
 

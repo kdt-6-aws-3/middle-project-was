@@ -64,6 +64,11 @@ CREATE TABLE appointments (
     status VARCHAR(20) NOT NULL,
     reason VARCHAR(255) NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- 1 while the appointment holds its slot, NULL once cancelled. NULLs never collide in a
+    -- UNIQUE index, so a cancelled slot can be booked again
+    active_slot TINYINT GENERATED ALWAYS AS (IF(status = 'CANCELLED', NULL, 1)) STORED,
+    UNIQUE KEY uk_appointments_vet_slot (vet_id, appointment_at, active_slot),
+    UNIQUE KEY uk_appointments_pet_slot (pet_id, appointment_at, active_slot),
     FOREIGN KEY (hospital_id) REFERENCES hospitals(id),
     FOREIGN KEY (pet_id) REFERENCES pets(id),
     FOREIGN KEY (vet_id) REFERENCES vets(id)

@@ -17,6 +17,7 @@
 package org.springframework.samples.petclinic.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -30,6 +31,7 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase.Replace;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.samples.petclinic.entity.Appointment;
@@ -273,6 +275,44 @@ class ClinicServiceTests {
 		assertThat(reloaded.getCreatedAt()).isNotNull();
 		assertThat(reloaded.getStatus()).isEqualTo(AppointmentStatus.REQUESTED);
 		assertThat(reloaded.getVet().getName()).isEqualTo("김민준");
+	}
+
+	private Appointment newAppointment(int hospitalAndVetId, int petId, LocalDateTime at) {
+		Appointment appointment = new Appointment();
+		appointment.setHospital(this.hospitals.findById(hospitalAndVetId).orElseThrow());
+		appointment.setVet(this.vets.findById(hospitalAndVetId).orElseThrow());
+		appointment.setPet(EntityUtils
+			.getById(this.owners.findAll().stream().flatMap(o -> o.getPets().stream()).toList(), Pet.class, petId));
+		appointment.setAppointmentAt(at);
+		appointment.setStatus(AppointmentStatus.REQUESTED);
+		return appointment;
+	}
+
+	@Test
+	void shouldTellWhetherASlotIsBooked() {
+		LocalDateTime slot = LocalDateTime.of(2026, 10, 28, 10, 30);
+		assertThat(this.appointments.isVetBooked(2, slot, null)).isTrue();
+		assertThat(this.appointments.isVetBooked(2, slot, 4)).isFalse(); // its own slot
+		assertThat(this.appointments.isPetBooked(3, slot, null)).isTrue();
+		// appointment 7 (vet 5, pet 6) was cancelled, so its slot is free again
+		assertThat(this.appointments.isVetBooked(5, LocalDateTime.of(2026, 10, 22, 13, 0), null)).isFalse();
+	}
+
+	@Test
+	@Transactional
+	void shouldRejectSecondBookingOfAVetSlotInTheDatabase() {
+		// vet 2 is booked at 2026-10-28 10:30 (appointment 4); another pet must not get
+		// it
+		Appointment duplicate = newAppointment(2, 1, LocalDateTime.of(2026, 10, 28, 10, 30));
+		assertThatThrownBy(() -> this.appointments.saveAndFlush(duplicate))
+			.isInstanceOf(DataIntegrityViolationException.class);
+	}
+
+	@Test
+	@Transactional
+	void shouldAllowBookingACancelledSlot() {
+		this.appointments.saveAndFlush(newAppointment(5, 6, LocalDateTime.of(2026, 10, 22, 13, 0)));
+		assertThat(this.appointments.isVetBooked(5, LocalDateTime.of(2026, 10, 22, 13, 0), null)).isTrue();
 	}
 
 	@Test

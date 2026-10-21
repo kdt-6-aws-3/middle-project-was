@@ -76,6 +76,10 @@ CREATE TABLE appointments (
   status         VARCHAR(20)  NOT NULL,
   reason         VARCHAR(255),
   created_at     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  -- same rule as MySQL: 1 while the slot is held, NULL once cancelled
+  active_slot    INTEGER GENERATED ALWAYS AS (CASE WHEN status = 'CANCELLED' THEN NULL ELSE 1 END),
+  UNIQUE (vet_id, appointment_at, active_slot),
+  UNIQUE (pet_id, appointment_at, active_slot),
   FOREIGN KEY (hospital_id) REFERENCES hospitals (id),
   FOREIGN KEY (pet_id) REFERENCES pets (id),
   FOREIGN KEY (vet_id) REFERENCES vets (id)

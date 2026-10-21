@@ -19,6 +19,7 @@ package org.springframework.samples.petclinic.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -32,6 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -43,6 +45,7 @@ import org.junit.jupiter.api.condition.DisabledInNativeImage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.samples.petclinic.entity.Appointment;
 import org.springframework.samples.petclinic.entity.AppointmentStatus;
@@ -235,6 +238,40 @@ class AppointmentControllerTests {
 	}
 
 	@Test
+	void createAppointmentOffTheHalfHourGrid() throws Exception {
+		String quarterPast = LocalDate.now().plusDays(1) + "T10:15:00";
+		postAppointment(request(1, 1, 1, quarterPast)).andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.errors[?(@.field == 'appointmentAt')].code").value("appointment.notOnSlot"));
+		verify(this.appointments, never()).save(any(Appointment.class));
+	}
+
+	@Test
+	void createAppointmentWhenVetIsBooked() throws Exception {
+		given(this.appointments.isVetBooked(eq(1), any(LocalDateTime.class), isNull())).willReturn(true);
+		postAppointment(request(1, 1, 1, TOMORROW)).andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.errors[?(@.field == 'appointmentAt')].code").value("appointment.vetTimeTaken"))
+			.andExpect(jsonPath("$.errors[?(@.field == 'appointmentAt')].message")
+				.value("The vet already has an appointment at this time"));
+		verify(this.appointments, never()).save(any(Appointment.class));
+	}
+
+	@Test
+	void createAppointmentWhenPetIsBooked() throws Exception {
+		given(this.appointments.isPetBooked(eq(1), any(LocalDateTime.class), isNull())).willReturn(true);
+		postAppointment(request(1, 1, 1, TOMORROW)).andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.errors[?(@.field == 'appointmentAt')].code").value("appointment.petTimeTaken"));
+	}
+
+	@Test
+	void concurrentDoubleBookingIsAConflict() throws Exception {
+		// both requests passed the check; the unique index stops the second one
+		given(this.appointments.save(any(Appointment.class)))
+			.willThrow(new DataIntegrityViolationException("Duplicate entry for key 'uk_appointments_vet_slot'"));
+		postAppointment(request(1, 1, 1, TOMORROW)).andExpect(status().isConflict())
+			.andExpect(jsonPath("$.detail").value("The request conflicts with existing data"));
+	}
+
+	@Test
 	void createAppointmentWithUnknownPet() throws Exception {
 		postAppointment(request(1, 99, 1, TOMORROW)).andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.errors[?(@.field == 'petId')].code").value("notFound"));
@@ -249,6 +286,8 @@ class AppointmentControllerTests {
 			.andExpect(jsonPath("$.id").value(4))
 			.andExpect(jsonPath("$.appointmentAt").value(TOMORROW + ":00"))
 			.andExpect(jsonPath("$.status").value("CONFIRMED"));
+		// the appointment does not collide with its own slot
+		verify(this.appointments).isVetBooked(1, LocalDateTime.parse(TOMORROW), 4);
 	}
 
 	@Test

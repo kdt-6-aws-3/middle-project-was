@@ -16,10 +16,10 @@
 
 package org.springframework.samples.petclinic.service;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.samples.petclinic.dto.OwnerDetails;
 import org.springframework.samples.petclinic.dto.OwnerRequest;
 import org.springframework.samples.petclinic.dto.OwnerSummary;

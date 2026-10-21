@@ -16,6 +16,7 @@
 
 package org.springframework.samples.petclinic.repository;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
@@ -44,6 +45,30 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Intege
 			ORDER BY a.appointmentAt, a.id""")
 	List<Appointment> search(@Param("hospitalId") Integer hospitalId, @Param("vetId") Integer vetId,
 			@Param("petId") Integer petId, @Param("status") AppointmentStatus status);
+
+	/**
+	 * Whether the vet already has a non-cancelled appointment at that time, ignoring the
+	 * appointment with id {@code excludeId} (the one being changed, or {@code null}).
+	 */
+	@Query("""
+			SELECT COUNT(a) > 0 FROM Appointment a
+			WHERE a.vet.id = :vetId AND a.appointmentAt = :appointmentAt
+			  AND a.status <> org.springframework.samples.petclinic.entity.AppointmentStatus.CANCELLED
+			  AND (:excludeId IS NULL OR a.id <> :excludeId)""")
+	boolean isVetBooked(@Param("vetId") Integer vetId, @Param("appointmentAt") LocalDateTime appointmentAt,
+			@Param("excludeId") Integer excludeId);
+
+	/**
+	 * Whether the pet already has a non-cancelled appointment at that time, ignoring the
+	 * appointment with id {@code excludeId} (the one being changed, or {@code null}).
+	 */
+	@Query("""
+			SELECT COUNT(a) > 0 FROM Appointment a
+			WHERE a.pet.id = :petId AND a.appointmentAt = :appointmentAt
+			  AND a.status <> org.springframework.samples.petclinic.entity.AppointmentStatus.CANCELLED
+			  AND (:excludeId IS NULL OR a.id <> :excludeId)""")
+	boolean isPetBooked(@Param("petId") Integer petId, @Param("appointmentAt") LocalDateTime appointmentAt,
+			@Param("excludeId") Integer excludeId);
 
 	/**
 	 * Deletes the appointments of the given pets. Needed before deleting pets because

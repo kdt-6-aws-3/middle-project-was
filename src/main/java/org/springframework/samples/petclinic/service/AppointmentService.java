@@ -35,7 +35,9 @@ import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.Errors;
 
 /**
- * Booking, rescheduling and changing the status of appointments.
+ * Booking, rescheduling and changing the status of appointments. Appointments start on
+ * the hour or half hour (30-minute slots), and a vet or a pet can have only one
+ * non-cancelled appointment per slot.
  */
 @Service
 public class AppointmentService {
@@ -43,6 +45,8 @@ public class AppointmentService {
 	/**
 	 * Errors are collected on {@link Appointment}, whose relations are ids in the API.
 	 */
+	private static final int SLOT_MINUTES = 30;
+
 	private static final Map<String, String> FIELD_ALIASES = Map.of("hospital", "hospitalId", "pet", "petId", "vet",
 			"vetId");
 
@@ -127,8 +131,24 @@ public class AppointmentService {
 		}
 		appointment.setAppointmentAt(request.appointmentAt());
 		appointment.setReason(request.reason());
-		if (!request.appointmentAt().isAfter(LocalDateTime.now())) {
+		LocalDateTime at = request.appointmentAt();
+		if (!at.isAfter(LocalDateTime.now())) {
 			errors.rejectValue("appointmentAt", "appointment.notInFuture");
+		}
+		if (at.getMinute() % SLOT_MINUTES != 0 || at.getSecond() != 0 || at.getNano() != 0) {
+			errors.rejectValue("appointmentAt", "appointment.notOnSlot");
+		}
+		else {
+			// friendly check; the unique indexes in the schema also stop concurrent
+			// bookings
+			if (appointment.getVet() != null
+					&& this.appointments.isVetBooked(appointment.getVet().getId(), at, appointment.getId())) {
+				errors.rejectValue("appointmentAt", "appointment.vetTimeTaken");
+			}
+			if (appointment.getPet() != null
+					&& this.appointments.isPetBooked(appointment.getPet().getId(), at, appointment.getId())) {
+				errors.rejectValue("appointmentAt", "appointment.petTimeTaken");
+			}
 		}
 		return errors;
 	}
