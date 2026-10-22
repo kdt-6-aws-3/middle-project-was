@@ -16,6 +16,7 @@
 
 package org.springframework.samples.petclinic.service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -69,6 +70,20 @@ public class AppointmentService {
 	public List<AppointmentDetails> findAppointments(Integer hospitalId, Integer vetId, Integer petId,
 			AppointmentStatus status) {
 		return this.appointments.search(hospitalId, vetId, petId, status)
+			.stream()
+			.map(AppointmentDetails::from)
+			.toList();
+	}
+
+	/**
+	 * A vet's appointments on one day (00:00 to 24:00), earliest first. Cancelled ones
+	 * are included with their status so the screen can show or hide them.
+	 */
+	public List<AppointmentDetails> getVetSchedule(int vetId, LocalDate date) {
+		if (this.vets.findById(vetId).isEmpty()) {
+			throw new ResourceNotFoundException("Vet " + vetId + " not found");
+		}
+		return this.appointments.findVetSchedule(vetId, date.atStartOfDay(), date.plusDays(1).atStartOfDay())
 			.stream()
 			.map(AppointmentDetails::from)
 			.toList();

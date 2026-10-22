@@ -47,6 +47,17 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Intege
 			@Param("petId") Integer petId, @Param("status") AppointmentStatus status);
 
 	/**
+	 * A vet's appointments from {@code from} (inclusive) to {@code to} (exclusive),
+	 * earliest first, cancelled ones included.
+	 */
+	@Query("""
+			SELECT a FROM Appointment a
+			WHERE a.vet.id = :vetId AND a.appointmentAt >= :from AND a.appointmentAt < :to
+			ORDER BY a.appointmentAt, a.id""")
+	List<Appointment> findVetSchedule(@Param("vetId") Integer vetId, @Param("from") LocalDateTime from,
+			@Param("to") LocalDateTime to);
+
+	/**
 	 * Whether the vet already has a non-cancelled appointment at that time, ignoring the
 	 * appointment with id {@code excludeId} (the one being changed, or {@code null}).
 	 */

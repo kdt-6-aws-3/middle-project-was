@@ -35,6 +35,7 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
 | PUT | `/api/appointments/{appointmentId}` | 진료 예약 변경 (병원·반려동물·수의사·일시·사유) |
 | PATCH | `/api/appointments/{appointmentId}/status` | 진료 예약 상태 변경 |
 | DELETE | `/api/appointments/{appointmentId}` | 진료 예약 삭제 |
+| GET | `/api/vets/{vetId}/appointments?date=` | 수의사의 하루 예약 일정 |
 
 병원·수의사·동물 종류·전문 분야는 화면에서 고르는 기준 데이터라 조회만 제공합니다. 데이터는 DB 담당이 관리합니다.
 
@@ -319,6 +320,17 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
 ```
 
 응답 `200`(예약 상세). 이미 `CANCELLED`·`COMPLETED`인 예약이면 `400`(`appointment.closed`).
+
+### GET `/api/vets/{vetId}/appointments?date=2026-10-23`
+
+수의사 한 명의 그날(00:00~24:00) 예약 일정입니다. 예약 화면에서 이미 잡힌 시간을 보여 줄 때 씁니다.
+
+| 파라미터 | 설명 |
+| --- | --- |
+| `vetId` (경로) | 수의사 ID. 없으면 `404` |
+| `date` | **필수**, `yyyy-MM-dd`. 없거나 형식이 틀리면 `400` |
+
+응답 `200`: 예약 일시순, 형식은 예약 목록과 같음. 취소(`CANCELLED`)된 예약도 상태와 함께 포함되므로, 빈 시간을 계산할 때는 취소 건을 빼고 봅니다. 예약이 없으면 빈 배열(`[]`).
 
 ### DELETE `/api/appointments/{appointmentId}`
 

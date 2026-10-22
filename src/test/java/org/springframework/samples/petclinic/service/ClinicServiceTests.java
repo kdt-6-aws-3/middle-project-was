@@ -289,6 +289,15 @@ class ClinicServiceTests {
 	}
 
 	@Test
+	void shouldFindTheScheduleOfAVetForADay() {
+		// vet 2 on 2026-10-28: only appointment 4 (10:30); the day before is empty
+		LocalDateTime day = LocalDateTime.of(2026, 10, 28, 0, 0);
+		assertThat(this.appointments.findVetSchedule(2, day, day.plusDays(1))).extracting(Appointment::getId)
+			.containsExactly(4);
+		assertThat(this.appointments.findVetSchedule(2, day.minusDays(1), day)).isEmpty();
+	}
+
+	@Test
 	void shouldTellWhetherASlotIsBooked() {
 		LocalDateTime slot = LocalDateTime.of(2026, 10, 28, 10, 30);
 		assertThat(this.appointments.isVetBooked(2, slot, null)).isTrue();
