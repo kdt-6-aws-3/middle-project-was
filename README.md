@@ -1,7 +1,7 @@
 # PetClinic WAS (REST API)
 
 AWS 3-Tier(WEB · WAS · DB) 인프라 구축 프로젝트의 **WAS 계층** 애플리케이션입니다.
-[spring-projects/spring-petclinic](https://github.com/spring-projects/spring-petclinic)을 기반으로, 화면(Thymeleaf)을 제거하고 **JSON REST API만 제공**하도록 바꿨습니다. 보호자·반려동물·방문 기록·수의사에 대한 업무 로직은 원본 PetClinic을 그대로 사용합니다.
+[spring-projects/spring-petclinic](https://github.com/spring-projects/spring-petclinic)을 기반으로, 화면(Thymeleaf)을 제거하고 **JSON REST API만 제공**하도록 바꿨습니다. 보호자·반려동물·진료 기록·수의사에 대한 업무 로직은 원본 PetClinic을 그대로 사용합니다.
 
 ## 구성에서의 역할
 
@@ -57,7 +57,7 @@ org.springframework.samples.petclinic
 └── config       캐시 설정
 ```
 
-반려동물과 방문 기록은 보호자에 딸린 데이터라 별도 리포지토리 없이 `OwnerRepository`로 보호자와 함께 저장·삭제합니다. DB의 외래 키에 `ON DELETE CASCADE`가 없으므로, 보호자나 반려동물을 지울 때는 진료 예약을 먼저 지우고, 이어서 JPA가 방문 기록 → 반려동물 → 보호자 순서로 지웁니다.
+반려동물과 진료 기록은 보호자에 딸린 데이터라 별도 리포지토리 없이 `OwnerRepository`로 보호자와 함께 저장·삭제합니다. DB의 외래 키에 `ON DELETE CASCADE`가 없으므로, 보호자나 반려동물을 지울 때는 진료 예약을 먼저 지우고, 이어서 JPA가 진료 기록 → 반려동물 → 보호자 순서로 지웁니다.
 
 ## API
 
@@ -68,7 +68,7 @@ org.springframework.samples.petclinic
 | GET | `/api/owners?name=&page=&size=` | 보호자 검색 (이름으로 시작) |
 | GET · POST · PUT · DELETE | `/api/owners`, `/api/owners/{ownerId}` | 보호자 상세·등록·수정·삭제 |
 | GET · POST · PUT · DELETE | `/api/owners/{ownerId}/pets`, `/api/owners/{ownerId}/pets/{petId}` | 반려동물 상세·등록·수정·삭제 |
-| GET · POST · PUT · DELETE | `/api/owners/{ownerId}/pets/{petId}/visits`, `…/visits/{visitId}` | 방문 기록 목록·등록·수정·삭제 |
+| GET · POST · PUT · DELETE | `/api/owners/{ownerId}/pets/{petId}/visits`, `…/visits/{visitId}` | 진료 기록 목록·등록·수정·삭제 |
 | GET | `/api/hospitals`, `/api/hospitals/{hospitalId}`, `/api/hospitals/{hospitalId}/vets` | 병원 목록·상세·소속 수의사 |
 | GET | `/api/vets` | 수의사 목록 (병원 포함) |
 | GET · POST · PUT · PATCH · DELETE | `/api/appointments`, `/api/appointments/{appointmentId}`, `…/status` | 진료 예약 목록·상세·등록·변경·상태 변경·삭제 |
@@ -148,7 +148,7 @@ Amazon Linux 2023 기준입니다. 원본 EC2 한 대에서 이 레포를 받아
 
 - 로그: `journalctl -u petclinic -f`
 - 코드를 고친 뒤에는 푸시하고 2번 명령만 다시 실행하면 됩니다. 환경 파일은 덮어쓰지 않습니다. 바꾼 뒤에는 AMI를 새로 만듭니다.
-- 시간대를 `Asia/Seoul`로 두는 이유: 생일·방문 날짜 검증의 "오늘"이 서버 시간대를 따르는데, EC2 기본값(UTC)이면 한국 시간 00~09시에 하루가 어긋납니다.
+- 시간대를 `Asia/Seoul`로 두는 이유: 생일·진료 날짜 검증의 "오늘"이 서버 시간대를 따르는데, EC2 기본값(UTC)이면 한국 시간 00~09시에 하루가 어긋납니다.
 - EC2 IAM 역할에 `AmazonSSMManagedInstanceCore`가 필요합니다. SSH(22) 인바운드는 열지 않습니다.
 - 환경 파일은 AMI에 함께 들어가므로 AMI를 다른 계정에 공유하지 않습니다.
 

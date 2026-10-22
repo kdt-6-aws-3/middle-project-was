@@ -1,6 +1,6 @@
 # PetClinic REST API
 
-WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. DB 구조는 `src/main/resources/db/mysql/schema.sql`(병원·수의사·보호자·반려동물·방문 기록·진료 예약)을 따릅니다.
+WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. DB 구조는 `src/main/resources/db/mysql/schema.sql`(병원·수의사·보호자·반려동물·진료 기록·진료 예약)을 따릅니다.
 
 - 기본 경로: `/api` (WEB의 Apache가 `/api` 요청만 내부 ALB를 거쳐 WAS로 전달)
 - 형식: 요청·응답 모두 `application/json`, 문자 인코딩 UTF-8
@@ -12,18 +12,18 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
 | 메서드 | 경로 | 설명 |
 | --- | --- | --- |
 | GET | `/api/owners?name={이름}&page={번호}&size={개수}` | 보호자 검색 (이름으로 시작, 페이지) |
-| GET | `/api/owners/{ownerId}` | 보호자 상세 (반려동물·방문 기록 포함) |
+| GET | `/api/owners/{ownerId}` | 보호자 상세 (반려동물·진료 기록 포함) |
 | POST | `/api/owners` | 보호자 등록 |
 | PUT | `/api/owners/{ownerId}` | 보호자 수정 |
-| DELETE | `/api/owners/{ownerId}` | 보호자 삭제 (반려동물·방문 기록·예약도 함께 삭제) |
-| GET | `/api/owners/{ownerId}/pets/{petId}` | 반려동물 상세 (방문 기록 포함) |
+| DELETE | `/api/owners/{ownerId}` | 보호자 삭제 (반려동물·진료 기록·예약도 함께 삭제) |
+| GET | `/api/owners/{ownerId}/pets/{petId}` | 반려동물 상세 (진료 기록 포함) |
 | POST | `/api/owners/{ownerId}/pets` | 반려동물 등록 |
 | PUT | `/api/owners/{ownerId}/pets/{petId}` | 반려동물 수정 |
-| DELETE | `/api/owners/{ownerId}/pets/{petId}` | 반려동물 삭제 (방문 기록·예약도 함께 삭제) |
-| GET | `/api/owners/{ownerId}/pets/{petId}/visits` | 방문(진료) 기록 목록 |
-| POST | `/api/owners/{ownerId}/pets/{petId}/visits` | 방문 기록 등록 |
-| PUT | `/api/owners/{ownerId}/pets/{petId}/visits/{visitId}` | 방문 기록 수정 |
-| DELETE | `/api/owners/{ownerId}/pets/{petId}/visits/{visitId}` | 방문 기록 삭제 |
+| DELETE | `/api/owners/{ownerId}/pets/{petId}` | 반려동물 삭제 (진료 기록·예약도 함께 삭제) |
+| GET | `/api/owners/{ownerId}/pets/{petId}/visits` | 진료 기록 목록 |
+| POST | `/api/owners/{ownerId}/pets/{petId}/visits` | 진료 기록 등록 |
+| PUT | `/api/owners/{ownerId}/pets/{petId}/visits/{visitId}` | 진료 기록 수정 |
+| DELETE | `/api/owners/{ownerId}/pets/{petId}/visits/{visitId}` | 진료 기록 삭제 |
 | GET | `/api/pettypes` | 동물 종류 목록 |
 | GET | `/api/hospitals` | 병원 목록 |
 | GET | `/api/hospitals/{hospitalId}` | 병원 상세 |
@@ -122,7 +122,7 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
 
 ### DELETE `/api/owners/{ownerId}`
 
-보호자의 반려동물과 그 방문 기록·진료 예약까지 함께 삭제합니다. 응답 `204`(본문 없음), 없는 보호자면 `404`.
+보호자의 반려동물과 그 진료 기록·진료 예약까지 함께 삭제합니다. 응답 `204`(본문 없음), 없는 보호자면 `404`.
 
 ## 동물 종류
 
@@ -162,9 +162,9 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
 
 ### DELETE `/api/owners/{ownerId}/pets/{petId}`
 
-반려동물과 그 방문 기록·진료 예약을 함께 삭제합니다. 응답 `204`, 보호자나 반려동물이 없으면 `404`.
+반려동물과 그 진료 기록·진료 예약을 함께 삭제합니다. 응답 `204`, 보호자나 반려동물이 없으면 `404`.
 
-## 방문(진료) 기록
+## 진료 기록
 
 ### GET `/api/owners/{ownerId}/pets/{petId}/visits`
 
@@ -191,11 +191,11 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
 | `description` | 필수, 최대 255자 |
 | `prescription` | 선택, 최대 255자. 처방 약품 내역. 비우거나 공백만 보내면 "처방 없음"(`null`)으로 저장 |
 
-응답 `201`, 본문은 등록된 방문 기록.
+응답 `201`, 본문은 등록된 진료 기록.
 
 ### PUT `/api/owners/{ownerId}/pets/{petId}/visits/{visitId}`
 
-요청·규칙은 등록과 같습니다(날짜는 오늘 또는 과거). 응답 `200`(방문 기록), 없으면 `404`.
+요청·규칙은 등록과 같습니다(날짜는 오늘 또는 과거). 응답 `200`(진료 기록), 없으면 `404`.
 
 ### DELETE `/api/owners/{ownerId}/pets/{petId}/visits/{visitId}`
 
@@ -359,7 +359,7 @@ RFC 9457 Problem Details 형식(`application/problem+json`)입니다.
 | --- | --- |
 | `400` | 입력값 검증 실패, JSON 형식 오류, 잘못된 날짜 형식 |
 | `409` | 동시에 들어온 요청이 DB 제약(예: 같은 예약 시각)에 걸림 |
-| `404` | 보호자·반려동물·방문 기록·병원·수의사·예약이 없음, 없는 경로 |
+| `404` | 보호자·반려동물·진료 기록·병원·수의사·예약이 없음, 없는 경로 |
 | `500` | 서버 내부 오류 |
 
 검증 실패 예 (`400`)
