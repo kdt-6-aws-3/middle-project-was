@@ -332,6 +332,21 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
 
 응답 `200`: 예약 일시순, 형식은 예약 목록과 같음. 취소(`CANCELLED`)된 예약도 상태와 함께 포함되므로, 빈 시간을 계산할 때는 취소 건을 빼고 봅니다. 예약이 없으면 빈 배열(`[]`).
 
+| 경우 | 응답 |
+| --- | --- |
+| `date` 없음 (`/api/vets/1/appointments`) | `400` |
+| `date` 형식 오류 (`date=2026/10/23`) | `400` |
+| 없는 수의사 (`/api/vets/99/appointments?date=2026-10-23`) | `404`, `"detail": "Vet 99 not found"` |
+
+```json
+{
+  "title": "Not Found",
+  "status": 404,
+  "detail": "Vet 99 not found",
+  "instance": "/api/vets/99/appointments"
+}
+```
+
 ### DELETE `/api/appointments/{appointmentId}`
 
 응답 `204`, 없으면 `404`. (기록을 남기려면 삭제 대신 상태를 `CANCELLED`로 바꿉니다)
@@ -344,7 +359,7 @@ RFC 9457 Problem Details 형식(`application/problem+json`)입니다.
 | --- | --- |
 | `400` | 입력값 검증 실패, JSON 형식 오류, 잘못된 날짜 형식 |
 | `409` | 동시에 들어온 요청이 DB 제약(예: 같은 예약 시각)에 걸림 |
-| `404` | 보호자·반려동물·방문 기록·병원·예약이 없음, 없는 경로 |
+| `404` | 보호자·반려동물·방문 기록·병원·수의사·예약이 없음, 없는 경로 |
 | `500` | 서버 내부 오류 |
 
 검증 실패 예 (`400`)
