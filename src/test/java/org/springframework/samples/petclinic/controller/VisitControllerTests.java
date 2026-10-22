@@ -129,39 +129,38 @@ class VisitControllerTests {
 
 	@Test
 	void createVisit() throws Exception {
-		String tomorrow = LocalDate.now().plusDays(1).toString();
+		String today = LocalDate.now().toString();
 		postVisit("""
-				{"date": "%s", "description": "Visit Description"}""".formatted(tomorrow))
-			.andExpect(status().isCreated())
+				{"date": "%s", "description": "Visit Description"}""".formatted(today)).andExpect(status().isCreated())
 			.andExpect(jsonPath("$.id").value(7))
-			.andExpect(jsonPath("$.date").value(tomorrow))
+			.andExpect(jsonPath("$.date").value(today))
 			.andExpect(jsonPath("$.description").value("Visit Description"))
 			.andExpect(jsonPath("$.prescription").value(nullValue()));
 	}
 
 	@Test
 	void createVisitWithPrescription() throws Exception {
-		String tomorrow = LocalDate.now().plusDays(1).toString();
+		String today = LocalDate.now().toString();
 		postVisit("""
-				{"date": "%s", "description": "otitis externa", "prescription": " Surolan "}""".formatted(tomorrow))
+				{"date": "%s", "description": "otitis externa", "prescription": " Surolan "}""".formatted(today))
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.prescription").value("Surolan"));
 	}
 
 	@Test
 	void blankPrescriptionMeansNothingPrescribed() throws Exception {
-		String tomorrow = LocalDate.now().plusDays(1).toString();
+		String today = LocalDate.now().toString();
 		postVisit("""
-				{"date": "%s", "description": "checkup", "prescription": "  "}""".formatted(tomorrow))
+				{"date": "%s", "description": "checkup", "prescription": "  "}""".formatted(today))
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.prescription").value(nullValue()));
 	}
 
 	@Test
 	void createVisitWithTooLongPrescription() throws Exception {
-		String tomorrow = LocalDate.now().plusDays(1).toString();
+		String today = LocalDate.now().toString();
 		postVisit("""
-				{"date": "%s", "description": "checkup", "prescription": "%s"}""".formatted(tomorrow, "A".repeat(256)))
+				{"date": "%s", "description": "checkup", "prescription": "%s"}""".formatted(today, "A".repeat(256)))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.errors[?(@.field == 'prescription')].code").value("Size"));
 		verify(this.owners, never()).save(any(Owner.class));
@@ -176,33 +175,42 @@ class VisitControllerTests {
 	}
 
 	@Test
-	void createVisitWithTodayIsRejected() throws Exception {
+	void createVisitForAnEarlierDate() throws Exception {
+		// paper records are entered later, so past dates are fine
 		postVisit("""
-				{"date": "%s", "description": "Visit Description"}""".formatted(LocalDate.now()))
+				{"date": "2026-09-01", "description": "checkup"}""").andExpect(status().isCreated())
+			.andExpect(jsonPath("$.date").value("2026-09-01"));
+	}
+
+	@Test
+	void createVisitInTheFutureIsRejected() throws Exception {
+		postVisit("""
+				{"date": "%s", "description": "Visit Description"}""".formatted(LocalDate.now().plusDays(1)))
 			.andExpect(status().isBadRequest())
-			.andExpect(jsonPath("$.errors[?(@.field == 'date')].code").value("typeMismatch.visitDate"))
-			.andExpect(jsonPath("$.errors[?(@.field == 'date')].message").value("Visit date must be in the future"));
+			.andExpect(jsonPath("$.errors[?(@.field == 'date')].code").value("visit.dateInFuture"))
+			.andExpect(
+					jsonPath("$.errors[?(@.field == 'date')].message").value("The visit date cannot be in the future"));
 		verify(this.owners, never()).save(any(Owner.class));
 	}
 
 	@Test
 	void updateVisit() throws Exception {
-		String tomorrow = LocalDate.now().plusDays(1).toString();
+		String today = LocalDate.now().toString();
 		putVisit(TEST_VISIT_ID, """
-				{"date": "%s", "description": "follow-up", "prescription": "Otomax"}""".formatted(tomorrow))
+				{"date": "%s", "description": "follow-up", "prescription": "Otomax"}""".formatted(today))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.prescription").value("Otomax"))
 			.andExpect(jsonPath("$.id").value(TEST_VISIT_ID))
-			.andExpect(jsonPath("$.date").value(tomorrow))
+			.andExpect(jsonPath("$.date").value(today))
 			.andExpect(jsonPath("$.description").value("follow-up"));
 	}
 
 	@Test
-	void updateVisitWithTodayIsRejected() throws Exception {
+	void updateVisitInTheFutureIsRejected() throws Exception {
 		putVisit(TEST_VISIT_ID, """
-				{"date": "%s", "description": "follow-up"}""".formatted(LocalDate.now()))
+				{"date": "%s", "description": "follow-up"}""".formatted(LocalDate.now().plusDays(1)))
 			.andExpect(status().isBadRequest())
-			.andExpect(jsonPath("$.errors[?(@.field == 'date')].code").value("typeMismatch.visitDate"));
+			.andExpect(jsonPath("$.errors[?(@.field == 'date')].code").value("visit.dateInFuture"));
 		assertThat(this.owner.getPet(TEST_PET_ID).getVisit(TEST_VISIT_ID).getDescription()).isEqualTo("rabies shot");
 		verify(this.owners, never()).save(any(Owner.class));
 	}
@@ -210,7 +218,7 @@ class VisitControllerTests {
 	@Test
 	void updateUnknownVisit() throws Exception {
 		putVisit(999, """
-				{"date": "%s", "description": "follow-up"}""".formatted(LocalDate.now().plusDays(1)))
+				{"date": "%s", "description": "follow-up"}""".formatted(LocalDate.now()))
 			.andExpect(status().isNotFound())
 			.andExpect(jsonPath("$.detail").value("Visit 999 not found for pet 1"));
 	}

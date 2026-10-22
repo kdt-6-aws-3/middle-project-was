@@ -132,8 +132,11 @@ public class AppointmentService {
 		appointment.setAppointmentAt(request.appointmentAt());
 		appointment.setReason(request.reason());
 		LocalDateTime at = request.appointmentAt();
-		if (!at.isAfter(LocalDateTime.now())) {
-			errors.rejectValue("appointmentAt", "appointment.notInFuture");
+		// same-day booking: a slot can be booked until it ends (a 10:00 slot until
+		// 10:30),
+		// so a walk-in at 10:10 still gets the 10:00 slot
+		if (!at.plusMinutes(SLOT_MINUTES).isAfter(LocalDateTime.now())) {
+			errors.rejectValue("appointmentAt", "appointment.slotPassed");
 		}
 		if (at.getMinute() % SLOT_MINUTES != 0 || at.getSecond() != 0 || at.getNano() != 0) {
 			errors.rejectValue("appointmentAt", "appointment.notOnSlot");

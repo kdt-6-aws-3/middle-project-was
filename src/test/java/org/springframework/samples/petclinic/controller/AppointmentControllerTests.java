@@ -234,7 +234,25 @@ class AppointmentControllerTests {
 	@Test
 	void createAppointmentInThePast() throws Exception {
 		postAppointment(request(1, 1, 1, "2020-01-01T10:00:00")).andExpect(status().isBadRequest())
-			.andExpect(jsonPath("$.errors[?(@.field == 'appointmentAt')].code").value("appointment.notInFuture"));
+			.andExpect(jsonPath("$.errors[?(@.field == 'appointmentAt')].code").value("appointment.slotPassed"));
+	}
+
+	@Test
+	void createAppointmentInTheCurrentSlot() throws Exception {
+		// walk-in: the slot that started at most 30 minutes ago can still be booked
+		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime currentSlot = now.truncatedTo(ChronoUnit.HOURS).plusMinutes(now.getMinute() < 30 ? 0 : 30);
+		postAppointment(request(1, 1, 1, currentSlot.toString())).andExpect(status().isCreated());
+	}
+
+	@Test
+	void createAppointmentInTheSlotThatJustEnded() throws Exception {
+		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime previousSlot = now.truncatedTo(ChronoUnit.HOURS)
+			.plusMinutes(now.getMinute() < 30 ? 0 : 30)
+			.minusMinutes(30);
+		postAppointment(request(1, 1, 1, previousSlot.toString())).andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.errors[?(@.field == 'appointmentAt')].code").value("appointment.slotPassed"));
 	}
 
 	@Test

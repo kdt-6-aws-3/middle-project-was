@@ -186,7 +186,7 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
 
 | 필드 | 규칙 |
 | --- | --- |
-| `date` | 필수, **내일 이후** 날짜 (기존 PetClinic 규칙: 방문 예약) |
+| `date` | 필수, **오늘 또는 과거** 날짜 (진료 후 기록하므로 미래 날짜는 `400` `visit.dateInFuture`). 종이 기록을 나중에 입력할 수 있도록 과거 날짜는 제한 없음 |
 | `description` | 필수, 최대 255자 |
 | `prescription` | 선택, 최대 255자. 처방 약품 내역. 비우거나 공백만 보내면 "처방 없음"(`null`)으로 저장 |
 
@@ -194,7 +194,7 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
 
 ### PUT `/api/owners/{ownerId}/pets/{petId}/visits/{visitId}`
 
-요청·규칙은 등록과 같습니다(날짜는 내일 이후). 응답 `200`(방문 기록), 없으면 `404`.
+요청·규칙은 등록과 같습니다(날짜는 오늘 또는 과거). 응답 `200`(방문 기록), 없으면 `404`.
 
 ### DELETE `/api/owners/{ownerId}/pets/{petId}/visits/{visitId}`
 
@@ -290,7 +290,7 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
 | `hospitalId` | 필수, `/api/hospitals`의 ID |
 | `petId` | 필수, 반려동물 ID |
 | `vetId` | 필수, **예약 병원 소속** 수의사 (`/api/hospitals/{hospitalId}/vets`) |
-| `appointmentAt` | 필수, 현재 이후 일시, 정각 또는 30분 |
+| `appointmentAt` | 필수, 정각 또는 30분, **아직 끝나지 않은 시간대** (당일 예약 가능, 10:10이면 10:00 시간대까지 가능) |
 | `reason` | 선택, 최대 255자 |
 
 새 예약은 `REQUESTED` 상태로 만들어지고 `createdAt`은 서버가 채웁니다. 응답 `201`, `Location: /api/appointments/{새 ID}`, 본문은 예약 상세.
@@ -299,7 +299,7 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
 | --- | --- |
 | `notFound` | 없는 병원·반려동물·수의사 ID |
 | `appointment.vetNotInHospital` | 수의사가 그 병원 소속이 아님 |
-| `appointment.notInFuture` | 현재 이전 일시 |
+| `appointment.slotPassed` | 이미 끝난 시간대 (예: 10:40에 10:00 예약) |
 | `appointment.notOnSlot` | 정각·30분이 아닌 일시 (예: `10:15`) |
 | `appointment.vetTimeTaken` | 수의사가 그 시각에 이미 예약됨 |
 | `appointment.petTimeTaken` | 반려동물이 그 시각에 이미 예약됨 |

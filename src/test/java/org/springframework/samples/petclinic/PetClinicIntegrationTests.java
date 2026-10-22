@@ -91,12 +91,12 @@ public class PetClinicIntegrationTests {
 	void vetsIncludeTheirHospital() {
 		ResponseEntity<String> result = send(RequestEntity.get("/api/vets").build());
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-		assertThat(result.getBody()).contains("\"hospital\":{\"id\":1,\"name\":\"펫클리닉 강남점\"");
+		assertThat(result.getBody()).contains("\"hospital\":{\"id\":1,\"name\":\"가람동물병원\"");
 	}
 
 	@Test
 	void hospitalsAndTheirVets() {
-		assertThat(send(RequestEntity.get("/api/hospitals").build()).getBody()).contains("펫클리닉 부산점");
+		assertThat(send(RequestEntity.get("/api/hospitals").build()).getBody()).contains("웰니스 동물병원 대전복합터미널");
 		assertThat(send(RequestEntity.get("/api/hospitals/1/vets").build()).getBody()).contains("김민준");
 	}
 
@@ -107,6 +107,7 @@ public class PetClinicIntegrationTests {
 	 */
 	@Test
 	void crudCycleOfOwnerPetAndVisit() {
+		String today = LocalDate.now().toString();
 		String tomorrow = LocalDate.now().plusDays(1).toString();
 
 		ResponseEntity<String> owner = send(RequestEntity.post("/api/owners")
@@ -124,14 +125,14 @@ public class PetClinicIntegrationTests {
 
 		ResponseEntity<String> visit = send(RequestEntity.post(visits)
 			.contentType(MediaType.APPLICATION_JSON)
-			.body("{\"date\":\"" + tomorrow + "\",\"description\":\"checkup\",\"prescription\":\"Surolan\"}"));
+			.body("{\"date\":\"" + today + "\",\"description\":\"checkup\",\"prescription\":\"Surolan\"}"));
 		assertThat(visit.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 		int visitId = idOf(visit);
 		assertThat(visit.getBody()).contains("\"prescription\":\"Surolan\"");
 
 		ResponseEntity<String> updated = send(RequestEntity.put(visits + "/" + visitId)
 			.contentType(MediaType.APPLICATION_JSON)
-			.body("{\"date\":\"" + tomorrow + "\",\"description\":\"follow-up\"}"));
+			.body("{\"date\":\"" + today + "\",\"description\":\"follow-up\"}"));
 		assertThat(updated.getBody()).contains("follow-up");
 
 		ResponseEntity<String> appointment = send(RequestEntity.post("/api/appointments")
@@ -153,7 +154,7 @@ public class PetClinicIntegrationTests {
 		// the appointment, the visit and the pet
 		send(RequestEntity.post(visits)
 			.contentType(MediaType.APPLICATION_JSON)
-			.body("{\"date\":\"" + tomorrow + "\",\"description\":\"again\"}"));
+			.body("{\"date\":\"" + today + "\",\"description\":\"again\"}"));
 		assertThat(send(RequestEntity.delete("/api/owners/" + ownerId).build()).getStatusCode())
 			.isEqualTo(HttpStatus.NO_CONTENT);
 

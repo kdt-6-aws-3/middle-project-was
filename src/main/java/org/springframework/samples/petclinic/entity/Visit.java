@@ -50,10 +50,10 @@ public class Visit extends BaseEntity {
 	private String prescription;
 
 	/**
-	 * Creates a new instance of Visit for tomorrow
+	 * Creates a new instance of Visit for today (records are written after the treatment)
 	 */
 	public Visit() {
-		this.date = LocalDate.now().plusDays(1);
+		this.date = LocalDate.now();
 	}
 
 	public LocalDate getDate() {

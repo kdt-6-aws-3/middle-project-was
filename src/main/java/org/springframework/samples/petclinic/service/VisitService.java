@@ -35,8 +35,9 @@ import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.Errors;
 
 /**
- * Listing, booking, changing and cancelling the visits of a pet. Visits are saved through
- * the pet's owner.
+ * Recording and correcting the visits (treatment records) of a pet. A record is written
+ * after the treatment, so its date is today or earlier; bookings for the future are
+ * appointments. Visits are saved through the pet's owner.
  */
 @Service
 public class VisitService {
@@ -62,7 +63,7 @@ public class VisitService {
 		visit.setDate(request.date());
 		visit.setDescription(request.description());
 		visit.setPrescription(blankToNull(request.prescription()));
-		throwIfNotInFuture(visit);
+		throwIfInFuture(visit);
 
 		owner.addVisit(petId, visit);
 		Owner saved = this.owners.save(owner);
@@ -76,8 +77,8 @@ public class VisitService {
 	}
 
 	/**
-	 * Changes the date and description of a visit; the same future-date rule as booking
-	 * applies.
+	 * Corrects the date, description or prescription of a visit; the date rule of
+	 * recording applies.
 	 */
 	public VisitDetails updateVisit(int ownerId, int petId, int visitId, VisitRequest request) {
 		Owner owner = findOwner(ownerId);
@@ -87,7 +88,7 @@ public class VisitService {
 		changed.setDate(request.date());
 		changed.setDescription(request.description());
 		changed.setPrescription(blankToNull(request.prescription()));
-		throwIfNotInFuture(changed);
+		throwIfInFuture(changed);
 
 		visit.setDate(changed.getDate());
 		visit.setDescription(changed.getDescription());
@@ -111,10 +112,14 @@ public class VisitService {
 		return (prescription == null || prescription.isBlank()) ? null : prescription.strip();
 	}
 
-	private static void throwIfNotInFuture(Visit visit) {
-		if (!visit.getDate().isAfter(LocalDate.now())) {
+	/**
+	 * A treatment cannot be recorded before it happened. Past dates are allowed so paper
+	 * records can be entered later.
+	 */
+	private static void throwIfInFuture(Visit visit) {
+		if (visit.getDate().isAfter(LocalDate.now())) {
 			Errors errors = new BeanPropertyBindingResult(visit, "visit");
-			errors.rejectValue("date", "typeMismatch.visitDate");
+			errors.rejectValue("date", "visit.dateInFuture");
 			throw new ApiValidationException(errors);
 		}
 	}

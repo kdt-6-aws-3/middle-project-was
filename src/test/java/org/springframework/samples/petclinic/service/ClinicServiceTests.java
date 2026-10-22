@@ -241,7 +241,7 @@ class ClinicServiceTests {
 
 		Vet vet = EntityUtils.getById(vets, Vet.class, 3);
 		assertThat(vet.getName()).isEqualTo("박도윤");
-		assertThat(vet.getHospital().getName()).isEqualTo("펫클리닉 송파점");
+		assertThat(vet.getHospital().getName()).isEqualTo("다사랑동물병원");
 		assertThat(vet.getNrOfSpecialties()).isEqualTo(2);
 		assertThat(vet.getSpecialties().get(0).getName()).isEqualTo("내과");
 		assertThat(vet.getSpecialties().get(1).getName()).isEqualTo("영상의학과");
@@ -316,10 +316,28 @@ class ClinicServiceTests {
 	}
 
 	@Test
+	void shouldReadPrescriptionsFromTheSampleData() {
+		Pet nabi = this.owners.findById(1).orElseThrow().getPet(2);
+		assertThat(nabi.getVisit(3).getPrescription()).isEqualTo("수로란(Surolan)");
+		assertThat(nabi.getVisit(4).getPrescription()).isNull();
+	}
+
+	@Test
+	@Transactional
+	void shouldRejectASecondOwnerWithTheSamePhoneInTheDatabase() {
+		// owners.phone is UNIQUE (uq_owners_phone); 000-0000-2001 belongs to owner 1
+		Owner owner = new Owner();
+		owner.setName("중복번호");
+		owner.setAddress("대전광역시 동구");
+		owner.setPhone("000-0000-2001");
+		assertThatThrownBy(() -> this.owners.saveAndFlush(owner)).isInstanceOf(DataIntegrityViolationException.class);
+	}
+
+	@Test
 	void shouldFindHospitalsAndTheirVets() {
 		List<Hospital> hospitals = this.hospitals.findAllByOrderByIdAsc();
 		assertThat(hospitals).hasSize(10);
-		assertThat(hospitals.get(0).getName()).isEqualTo("펫클리닉 강남점");
+		assertThat(hospitals.get(0).getName()).isEqualTo("가람동물병원");
 
 		assertThat(this.vets.findByHospitalIdOrderByIdAsc(1)).extracting(Vet::getName).containsExactly("김민준");
 	}
