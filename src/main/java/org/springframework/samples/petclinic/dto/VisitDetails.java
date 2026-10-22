@@ -20,12 +20,12 @@ import java.time.LocalDate;
 import org.springframework.samples.petclinic.entity.Visit;
 
 /**
- * A visit of a pet.
+ * A visit of a pet with what was prescribed ({@code null} when nothing).
  */
-public record VisitDetails(Integer id, LocalDate date, String description) {
+public record VisitDetails(Integer id, LocalDate date, String description, String prescription) {
 
 	public static VisitDetails from(Visit visit) {
-		return new VisitDetails(visit.getId(), visit.getDate(), visit.getDescription());
+		return new VisitDetails(visit.getId(), visit.getDate(), visit.getDescription(), visit.getPrescription());
 	}
 
 }

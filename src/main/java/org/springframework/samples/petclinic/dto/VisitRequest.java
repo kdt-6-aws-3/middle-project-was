@@ -22,9 +22,10 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 /**
- * Request body for booking a visit. The date must be in the future (checked in
- * {@code VisitService}).
+ * Request body for a visit; {@code prescription} is optional (prescribed medicines). The
+ * date must be in the future (checked in {@code VisitService}).
  */
-public record VisitRequest(@NotNull LocalDate date, @NotBlank @Size(max = 255) String description) {
+public record VisitRequest(@NotNull LocalDate date, @NotBlank @Size(max = 255) String description,
+		@Size(max = 255) String prescription) {
 
 }

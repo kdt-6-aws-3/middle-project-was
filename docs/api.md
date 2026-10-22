@@ -90,7 +90,7 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
       "birthDate": "2021-03-15",
       "type": { "id": 1, "name": "개" },
       "visits": [
-        { "id": 1, "date": "2026-09-01", "description": "정기 건강검진 실시. 체중과 전반적인 건강 상태 확인." }
+        { "id": 1, "date": "2026-09-01", "description": "정기 건강검진 실시. 체중과 전반적인 건강 상태 확인.", "prescription": null }
       ]
     }
   ]
@@ -170,7 +170,10 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
 응답 `200`: 날짜순
 
 ```json
-[ { "id": 1, "date": "2026-09-01", "description": "정기 건강검진 실시." } ]
+[
+  { "id": 1, "date": "2026-09-01", "description": "정기 건강검진 실시.", "prescription": null },
+  { "id": 3, "date": "2026-09-03", "description": "귀 가려움과 분비물로 내원. …", "prescription": "수로란(Surolan)" }
+]
 ```
 
 ### POST `/api/owners/{ownerId}/pets/{petId}/visits`
@@ -178,13 +181,14 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
 요청
 
 ```json
-{ "date": "2026-10-22", "description": "예방접종" }
+{ "date": "2026-10-22", "description": "외이염 진료", "prescription": "수로란(Surolan)" }
 ```
 
 | 필드 | 규칙 |
 | --- | --- |
 | `date` | 필수, **내일 이후** 날짜 (기존 PetClinic 규칙: 방문 예약) |
 | `description` | 필수, 최대 255자 |
+| `prescription` | 선택, 최대 255자. 처방 약품 내역. 비우거나 공백만 보내면 "처방 없음"(`null`)으로 저장 |
 
 응답 `201`, 본문은 등록된 방문 기록.
 

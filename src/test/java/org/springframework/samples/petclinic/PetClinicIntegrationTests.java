@@ -124,9 +124,10 @@ public class PetClinicIntegrationTests {
 
 		ResponseEntity<String> visit = send(RequestEntity.post(visits)
 			.contentType(MediaType.APPLICATION_JSON)
-			.body("{\"date\":\"" + tomorrow + "\",\"description\":\"checkup\"}"));
+			.body("{\"date\":\"" + tomorrow + "\",\"description\":\"checkup\",\"prescription\":\"Surolan\"}"));
 		assertThat(visit.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 		int visitId = idOf(visit);
+		assertThat(visit.getBody()).contains("\"prescription\":\"Surolan\"");
 
 		ResponseEntity<String> updated = send(RequestEntity.put(visits + "/" + visitId)
 			.contentType(MediaType.APPLICATION_JSON)

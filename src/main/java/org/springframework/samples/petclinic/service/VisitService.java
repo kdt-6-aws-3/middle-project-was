@@ -61,6 +61,7 @@ public class VisitService {
 		Visit visit = new Visit();
 		visit.setDate(request.date());
 		visit.setDescription(request.description());
+		visit.setPrescription(blankToNull(request.prescription()));
 		throwIfNotInFuture(visit);
 
 		owner.addVisit(petId, visit);
@@ -85,10 +86,12 @@ public class VisitService {
 		Visit changed = new Visit();
 		changed.setDate(request.date());
 		changed.setDescription(request.description());
+		changed.setPrescription(blankToNull(request.prescription()));
 		throwIfNotInFuture(changed);
 
 		visit.setDate(changed.getDate());
 		visit.setDescription(changed.getDescription());
+		visit.setPrescription(changed.getPrescription());
 		Owner saved = this.owners.save(owner);
 		return VisitDetails.from(saved.getPet(petId).getVisit(visitId));
 	}
@@ -99,6 +102,13 @@ public class VisitService {
 		Pet pet = findPet(owner, petId);
 		pet.removeVisit(findVisit(pet, visitId));
 		this.owners.save(owner);
+	}
+
+	/**
+	 * An empty prescription means nothing was prescribed and is stored as NULL.
+	 */
+	private static String blankToNull(String prescription) {
+		return (prescription == null || prescription.isBlank()) ? null : prescription.strip();
 	}
 
 	private static void throwIfNotInFuture(Visit visit) {

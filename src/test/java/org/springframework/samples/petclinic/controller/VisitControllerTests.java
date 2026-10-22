@@ -18,6 +18,7 @@ package org.springframework.samples.petclinic.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -87,6 +88,7 @@ class VisitControllerTests {
 		visit.setId(TEST_VISIT_ID);
 		visit.setDate(LocalDate.of(2024, 5, 1));
 		visit.setDescription("rabies shot");
+		visit.setPrescription("Rabisin");
 		pet.addVisit(visit);
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(this.owner));
 		given(this.owners.save(any(Owner.class))).willAnswer(invocation -> {
@@ -115,7 +117,8 @@ class VisitControllerTests {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$", hasSize(1)))
 			.andExpect(jsonPath("$[0].date").value("2024-05-01"))
-			.andExpect(jsonPath("$[0].description").value("rabies shot"));
+			.andExpect(jsonPath("$[0].description").value("rabies shot"))
+			.andExpect(jsonPath("$[0].prescription").value("Rabisin"));
 	}
 
 	@Test
@@ -132,7 +135,36 @@ class VisitControllerTests {
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.id").value(7))
 			.andExpect(jsonPath("$.date").value(tomorrow))
-			.andExpect(jsonPath("$.description").value("Visit Description"));
+			.andExpect(jsonPath("$.description").value("Visit Description"))
+			.andExpect(jsonPath("$.prescription").value(nullValue()));
+	}
+
+	@Test
+	void createVisitWithPrescription() throws Exception {
+		String tomorrow = LocalDate.now().plusDays(1).toString();
+		postVisit("""
+				{"date": "%s", "description": "otitis externa", "prescription": " Surolan "}""".formatted(tomorrow))
+			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.prescription").value("Surolan"));
+	}
+
+	@Test
+	void blankPrescriptionMeansNothingPrescribed() throws Exception {
+		String tomorrow = LocalDate.now().plusDays(1).toString();
+		postVisit("""
+				{"date": "%s", "description": "checkup", "prescription": "  "}""".formatted(tomorrow))
+			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.prescription").value(nullValue()));
+	}
+
+	@Test
+	void createVisitWithTooLongPrescription() throws Exception {
+		String tomorrow = LocalDate.now().plusDays(1).toString();
+		postVisit("""
+				{"date": "%s", "description": "checkup", "prescription": "%s"}""".formatted(tomorrow, "A".repeat(256)))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.errors[?(@.field == 'prescription')].code").value("Size"));
+		verify(this.owners, never()).save(any(Owner.class));
 	}
 
 	@Test
@@ -157,7 +189,9 @@ class VisitControllerTests {
 	void updateVisit() throws Exception {
 		String tomorrow = LocalDate.now().plusDays(1).toString();
 		putVisit(TEST_VISIT_ID, """
-				{"date": "%s", "description": "follow-up"}""".formatted(tomorrow)).andExpect(status().isOk())
+				{"date": "%s", "description": "follow-up", "prescription": "Otomax"}""".formatted(tomorrow))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.prescription").value("Otomax"))
 			.andExpect(jsonPath("$.id").value(TEST_VISIT_ID))
 			.andExpect(jsonPath("$.date").value(tomorrow))
 			.andExpect(jsonPath("$.description").value("follow-up"));

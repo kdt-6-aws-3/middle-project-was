@@ -44,6 +44,12 @@ public class Visit extends BaseEntity {
 	private String description;
 
 	/**
+	 * Prescribed medicines, or {@code null} when nothing was prescribed.
+	 */
+	@Size(max = 255)
+	private String prescription;
+
+	/**
 	 * Creates a new instance of Visit for tomorrow
 	 */
 	public Visit() {
@@ -64,6 +70,14 @@ public class Visit extends BaseEntity {
 
 	public void setDescription(String description) {
 		this.description = description;
+	}
+
+	public String getPrescription() {
+		return this.prescription;
+	}
+
+	public void setPrescription(String prescription) {
+		this.prescription = prescription;
 	}
 
 }

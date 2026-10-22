@@ -64,6 +64,7 @@ CREATE TABLE visits (
   pet_id      INTEGER      NOT NULL,
   visit_date  DATE         NOT NULL,
   description VARCHAR(255) NOT NULL,
+  prescription VARCHAR(255),
   FOREIGN KEY (pet_id) REFERENCES pets (id)
 );
 
