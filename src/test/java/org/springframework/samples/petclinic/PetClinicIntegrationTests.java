@@ -69,7 +69,6 @@ public class PetClinicIntegrationTests {
 	@Test
 	void findAll() {
 		vets.findAll();
-		vets.findAll(); // served from cache
 	}
 
 	@Test

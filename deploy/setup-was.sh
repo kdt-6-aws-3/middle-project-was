@@ -13,7 +13,6 @@ JAR_SRC="${1:?Usage: sudo $0 <path to spring-petclinic-*.jar>}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_DIR=/opt/petclinic
 CONF_DIR=/etc/petclinic
-LOG_DIR=/var/log/petclinic
 ENV_FILE="$CONF_DIR/petclinic.env"
 HEALTH_URL=http://localhost:8080/actuator/health
 
@@ -32,9 +31,6 @@ java -version
 
 echo "==> Service user"
 id petclinic &>/dev/null || useradd --system --no-create-home --shell /sbin/nologin petclinic
-
-echo "==> Log directory -> $LOG_DIR"
-install -d -o petclinic -g petclinic -m 755 "$LOG_DIR"
 
 echo "==> Application JAR -> $APP_DIR/petclinic.jar"
 install -d -m 755 "$APP_DIR"

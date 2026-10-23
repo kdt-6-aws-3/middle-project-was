@@ -22,7 +22,7 @@ import org.springframework.samples.petclinic.repository.VetRepository;
 import org.springframework.stereotype.Service;
 
 /**
- * Veterinarians, served from the "vets" cache of {@link VetRepository}.
+ * Veterinarians, read from the database through {@link VetRepository} on every request.
  */
 @Service
 public class VetService {
