@@ -1,3 +1,7 @@
+-- RDS for MySQL 8.x 전용, 빈 DB에 한 번만 실행하는 초기 데이터.
+-- 목표: 병원 10곳, 수의사 50명(병원별 5명), 보호자 650,000명, 반려동물 650,001마리.
+-- 병원 정보 외에는 모두 가상 데이터. 기존 상세 진료/예약 및 사용자 추가 동물 종류는 유지함.
+-- 대량 생성은 비재귀 CTE/INSERT SELECT를 사용하며, 별도 프로시저 생성 권한은 필요 없음.
 SET NAMES utf8mb4;
 
 START TRANSACTION;
@@ -32,7 +36,7 @@ INSERT INTO specialties (id, specialty_name) VALUES
 (5, '영상의학과');
 
 -- ==================================================
--- 3. 수의사: 각 병원에 1명씩 배정
+-- 3. 수의사: 기존 10명의 소속 유지 + 40명 추가, 병원별 5명씩 총 50명
 -- ==================================================
 INSERT INTO vets (id, hospital_id, vet_name) VALUES
 (1,  1,  '김민준'),
@@ -45,6 +49,19 @@ INSERT INTO vets (id, hospital_id, vet_name) VALUES
 (8,  8,  '윤하은'),
 (9,  9,  '장예준'),
 (10, 10, '임서윤');
+
+-- 추가 수의사 ID 11~50. 병원 1번: 1/11/21/31/41, 병원 10번: 10/20/30/40/50.
+INSERT INTO vets (id, hospital_id, vet_name)
+SELECT h.id + 10 * extra.n,
+       h.id,
+       CONCAT(ELT(h.id, '김', '이', '박', '최', '정', '강', '조', '윤', '장', '임'),
+              ELT(extra.n, '지호', '서진', '현서', '도하'))
+FROM hospitals h
+CROSS JOIN (
+    SELECT 1 AS n UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4
+) extra
+WHERE h.id BETWEEN 1 AND 10
+ORDER BY h.id + 10 * extra.n;
 
 -- ==================================================
 -- 4. 수의사별 전문 분야
@@ -65,6 +82,11 @@ INSERT INTO vet_specialties (vet_id, specialty_id) VALUES
 (9, 4);
 
 -- 수의사 10번은 전문 분야 미등록: 연결 행을 넣지 않음
+-- 추가 수의사 40명에게는 전문 분야 1개씩 배정.
+INSERT INTO vet_specialties (vet_id, specialty_id)
+SELECT id, MOD(id - 1, 5) + 1
+FROM vets
+WHERE id BETWEEN 11 AND 50;
 
 -- ==================================================
 -- 5. 보호자
@@ -81,6 +103,68 @@ INSERT INTO owners (id, owner_name, address, phone) VALUES
 (9,  '장소윤', '대전광역시 동구 가오동 테스트주소 209', '000-0000-2009'),
 (10, '임재현', '대전광역시 동구 대성동 테스트주소 210', '000-0000-2010');
 
+-- 기존 10명 + 추가 649,990명 = 보호자 650,000명.
+-- 보호자 ID별 주소 배분(기존 1~10번 포함):
+-- 1~180000 대전광역시 180,000명 / 180001~420000 충청남도 240,000명
+-- 420001~600000 충청북도 180,000명 / 600001~650000 세종특별자치시 50,000명
+-- 주소의 시도/시군구/동 명칭만 실제 지명이며, 상세 주소는 가상 데이터임.
+-- 6개 자리수의 조합으로 0~999,999를 생성해 필요한 ID만 선택함(재귀 깊이 설정 불필요).
+-- 생성 전화번호는 000으로 시작하는 12자리 가상 번호이며 ID별로 유일함.
+INSERT INTO owners (id, owner_name, address, phone)
+WITH digits AS (
+    SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3
+    UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6
+    UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9
+), owner_numbers AS (
+    SELECT d0.n + 10 * d1.n + 100 * d2.n + 1000 * d3.n
+           + 10000 * d4.n + 100000 * d5.n AS owner_id
+    FROM digits d0
+    CROSS JOIN digits d1
+    CROSS JOIN digits d2
+    CROSS JOIN digits d3
+    CROSS JOIN digits d4
+    CROSS JOIN digits d5
+)
+SELECT owner_id,
+       CONCAT(ELT(MOD(owner_id - 1, 20) + 1,
+                  '김', '이', '박', '최', '정', '강', '조', '윤', '장', '임',
+                  '한', '오', '서', '신', '권', '황', '안', '송', '전', '홍'),
+              ELT(MOD(FLOOR((owner_id - 1) / 20), 40) + 1,
+                  '민준', '서연', '도윤', '지우', '하준', '수아', '시우', '하은', '예준', '서윤',
+                  '지훈', '민지', '현우', '수빈', '유진', '태양', '은서', '도현', '소윤', '재현',
+                  '지호', '서진', '현서', '도하', '준서', '지안', '유나', '준호', '채원', '건우',
+                  '다은', '승민', '나은', '성민', '예린', '정우', '소율', '우진', '하린', '태민')),
+       CASE
+           WHEN owner_id <= 180000 THEN
+               CONCAT('대전광역시 ',
+                      ELT(MOD(owner_id - 1, 5) + 1,
+                          '동구 가양동', '중구 문화동', '서구 둔산동',
+                          '유성구 봉명동', '대덕구 송촌동'),
+                      ' 테스트주소 ', owner_id)
+           WHEN owner_id <= 420000 THEN
+               CONCAT('충청남도 ',
+                      ELT(MOD(owner_id - 180001, 10) + 1,
+                          '천안시', '공주시', '보령시', '아산시', '서산시',
+                          '논산시', '계룡시', '당진시', '홍성군', '예산군'),
+                      ' 테스트주소 ', owner_id)
+           WHEN owner_id <= 600000 THEN
+               CONCAT('충청북도 ',
+                      ELT(MOD(owner_id - 420001, 11) + 1,
+                          '청주시', '충주시', '제천시', '보은군', '옥천군', '영동군',
+                          '증평군', '진천군', '괴산군', '음성군', '단양군'),
+                      ' 테스트주소 ', owner_id)
+           ELSE
+               CONCAT('세종특별자치시 ',
+                      ELT(MOD(owner_id - 600001, 10) + 1,
+                          '가람동', '고운동', '아름동', '종촌동', '다정동',
+                          '새롬동', '나성동', '도담동', '보람동', '소담동'),
+                      ' 테스트주소 ', owner_id)
+       END,
+       CONCAT('000', LPAD(owner_id, 9, '0'))
+FROM owner_numbers
+WHERE owner_id BETWEEN 11 AND 650000
+ORDER BY owner_id;
+
 -- ==================================================
 -- 6. 동물 종류
 -- ==================================================
@@ -90,11 +174,16 @@ INSERT INTO types (id, type_name) VALUES
 (3, '토끼'),
 (4, '햄스터'),
 (5, '새'),
-(6, '거북이');
+(6, '거북이'),
+(7, '돼지'),
+(8, '기니피그'),
+(9, '친칠라'),
+(10, '패럿'),
+(11, '고슴도치');
 
 -- ==================================================
 -- 7. 반려동물
--- 보호자 1번은 2마리 보유, 보호자 10번은 아직 반려동물 미등록
+-- 보호자 1번은 2마리 보유, 나머지 보호자는 1마리씩 보유
 -- ==================================================
 INSERT INTO pets (id, type_id, owner_id, pet_name, birth_date) VALUES
 (1,  1, 1, '초코', '2021-03-15'),
@@ -106,7 +195,23 @@ INSERT INTO pets (id, type_id, owner_id, pet_name, birth_date) VALUES
 (7,  4, 6, '모찌', '2025-01-12'),
 (8,  2, 7, '레오', '2021-06-18'),
 (9,  5, 8, '하늘', '2024-04-03'),
-(10, 6, 9, '꼬북', '2018-08-09');
+(10, 6, 9, '꼬북', '2018-08-09'),
+(11, 1, 10, '두부', '2022-05-11');
+
+-- 보호자 ID 11~650000에 반려동물을 한 마리씩 추가. 반려동물 ID = 보호자 ID + 1.
+-- 전체 11종에 순환 배정하며 생년월일은 2016~2025년 범위로 고정 생성.
+INSERT INTO pets (id, type_id, owner_id, pet_name, birth_date)
+SELECT id + 1,
+       MOD(id - 1, 11) + 1,
+       id,
+       ELT(MOD(id - 1, 30) + 1,
+           '초코', '보리', '콩이', '두부', '모찌', '나비', '루나', '레오', '하늘', '구름',
+           '별이', '달이', '토리', '밤이', '까미', '몽이', '코코', '쿠키', '뭉치', '호두',
+           '망고', '소금', '후추', '치즈', '라떼', '밀크', '푸딩', '젤리', '뽀삐', '해피'),
+       DATE_ADD('2016-01-01', INTERVAL MOD(id * 37, 3650) DAY)
+FROM owners
+WHERE id BETWEEN 11 AND 650000
+ORDER BY id;
 
 -- ==================================================
 -- 8. 방문·진료 기록
@@ -128,7 +233,26 @@ INSERT INTO visits (id, pet_id, visit_date, description, prescription) VALUES
 (11, 8, '2026-09-20', '반복 구토로 내원. 진찰 및 기본 검사로 원인 평가 후 구토 조절을 위한 항구토 주사제 처치. 수분 상태와 구토 재발 여부 추적 관찰 안내.', '세레니아 주사제(Cerenia, 마로피탄트)'),
 (12, 9, '2026-10-02', '깃털 상태 확인. 사육 환경 관리 방법 안내.', NULL);
 
--- 반려동물 10번은 아직 방문 이력 없음
+-- 기존 12건(반려동물 9마리의 재진 포함) + 추가 99,988건 = 진료 기록 100,000건.
+-- 기존 상세 진료/처방은 유지하고, 반려동물 ID 10~99997에 검진 이력을 한 건씩 추가.
+-- 진료 이력이 있는 반려동물은 총 99,997마리이며 나머지 550,004마리는 진료 이력 없음.
+INSERT INTO visits (id, pet_id, visit_date, description, prescription)
+SELECT p.id + 3,
+       p.id,
+       DATE(TIMESTAMPADD(DAY, MOD(FLOOR((p.id - 10) / 50), 280), '2026-01-01 00:00:00')),
+       ELT(MOD(p.id - 10, 8) + 1,
+           '정기 건강검진 실시. 기본 신체검사 및 건강 상태 확인.',
+           '체중 및 체형 상태 확인. 식사량과 활동량 관리 상담.',
+           '구강 상태 검진. 치아와 잇몸 상태 확인 및 구강 관리 상담.',
+           '피부 및 피모 상태 검진. 일상 위생 관리 방법 안내.',
+           '영양 상태 평가. 동물 종류와 연령에 따른 먹이 관리 상담.',
+           '귀와 눈 상태 검진. 일상 관찰 항목 및 위생 관리 안내.',
+           '연령별 건강 상태 상담 및 기본 신체검사 실시.',
+           '사육 환경 상담 및 기본 건강검진 실시.'),
+       NULL
+FROM pets p
+WHERE p.id BETWEEN 10 AND 99997
+ORDER BY p.id;
 
 -- ==================================================
 -- 9. 진료 예약
@@ -147,6 +271,6 @@ INSERT INTO appointments (id, hospital_id, pet_id, vet_id, appointment_at, statu
 (9,  8, 9,  8, '2026-11-05 11:30:00', 'REQUESTED', '깃털 상태 확인',        '2026-10-21 10:05:00'),
 (10, 9, 10, 9, '2026-11-06 15:00:00', 'REQUESTED', NULL,                    '2026-10-21 11:40:00');
 
--- 반려동물 8번은 예약 이력 없음, 예약 10번은 사유 미입력
+-- 기존 예약 10건만 유지하며 대량 초진 예약은 생성하지 않음. 예약 10번은 사유 미입력.
 
 COMMIT;
