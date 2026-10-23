@@ -353,6 +353,15 @@ class AppointmentControllerTests {
 	}
 
 	@Test
+	void deleteAllAppointments() throws Exception {
+		given(this.appointments.deleteAllAppointments()).willReturn(10);
+		mockMvc.perform(delete("/api/appointments"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.deleted").value(10));
+		verify(this.appointments).deleteAllAppointments();
+	}
+
+	@Test
 	void deleteAppointmentNotFound() throws Exception {
 		mockMvc.perform(delete("/api/appointments/{id}", 99)).andExpect(status().isNotFound());
 	}

@@ -89,4 +89,12 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Intege
 	@Query("DELETE FROM Appointment a WHERE a.pet.id IN :petIds")
 	void deleteByPetIds(@Param("petIds") Collection<Integer> petIds);
 
+	/**
+	 * Deletes every appointment in one statement.
+	 * @return the number of deleted appointments
+	 */
+	@Modifying
+	@Query("DELETE FROM Appointment a")
+	int deleteAllAppointments();
+
 }

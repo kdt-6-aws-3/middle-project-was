@@ -179,6 +179,18 @@ class ClinicServiceTests {
 	}
 
 	@Test
+	void shouldDeleteAllAppointments() {
+		// owners, pets and visits stay
+		long ownerCount = this.owners.count();
+		assertThat(this.appointments.deleteAllAppointments()).isEqualTo(10);
+		flushAndClear();
+
+		assertThat(this.appointments.findAll()).isEmpty();
+		assertThat(this.owners.count()).isEqualTo(ownerCount);
+		assertThat(this.owners.findById(1).orElseThrow().getPet(1).getVisits()).isNotEmpty();
+	}
+
+	@Test
 	void shouldFindAllPetTypes() {
 		Collection<PetType> petTypes = this.types.findPetTypes();
 

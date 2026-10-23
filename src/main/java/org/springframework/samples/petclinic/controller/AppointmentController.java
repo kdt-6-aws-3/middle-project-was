@@ -18,6 +18,7 @@ package org.springframework.samples.petclinic.controller;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.samples.petclinic.dto.AppointmentDetails;
@@ -79,6 +80,11 @@ class AppointmentController {
 	AppointmentDetails changeStatus(@PathVariable int appointmentId,
 			@Valid @RequestBody AppointmentStatusRequest request) {
 		return this.appointmentService.changeStatus(appointmentId, request.status());
+	}
+
+	@DeleteMapping
+	Map<String, Integer> deleteAllAppointments() {
+		return Map.of("deleted", this.appointmentService.deleteAllAppointments());
 	}
 
 	@DeleteMapping("/{appointmentId}")

@@ -34,6 +34,7 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
 | POST | `/api/appointments` | 진료 예약 등록 |
 | PUT | `/api/appointments/{appointmentId}` | 진료 예약 변경 (병원·반려동물·수의사·일시·사유) |
 | PATCH | `/api/appointments/{appointmentId}/status` | 진료 예약 상태 변경 |
+| DELETE | `/api/appointments` | 진료 예약 **전체** 삭제 |
 | DELETE | `/api/appointments/{appointmentId}` | 진료 예약 삭제 |
 | GET | `/api/vets/{vetId}/appointments?date=` | 수의사의 하루 예약 일정 |
 
@@ -345,6 +346,16 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
   "detail": "Vet 99 not found",
   "instance": "/api/vets/99/appointments"
 }
+```
+
+### DELETE `/api/appointments`
+
+진료 예약을 **모두** 지웁니다. 부하 테스트 사이에 예약 데이터를 초기화할 때 씁니다. 보호자·반려동물·진료 기록은 그대로 둡니다. 되돌릴 수 없습니다.
+
+응답 `200`: 지운 예약 수. 지울 예약이 없으면 `{"deleted": 0}`.
+
+```json
+{ "deleted": 10 }
 ```
 
 ### DELETE `/api/appointments/{appointmentId}`

@@ -32,6 +32,7 @@ import org.springframework.samples.petclinic.repository.HospitalRepository;
 import org.springframework.samples.petclinic.repository.PetRepository;
 import org.springframework.samples.petclinic.repository.VetRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.Errors;
 
@@ -127,6 +128,16 @@ public class AppointmentService {
 
 	public void deleteAppointment(int appointmentId) {
 		this.appointments.delete(findAppointment(appointmentId));
+	}
+
+	/**
+	 * Deletes all appointments (e.g. to reset data between load tests). Owners, pets and
+	 * visits are kept.
+	 * @return the number of deleted appointments
+	 */
+	@Transactional
+	public int deleteAllAppointments() {
+		return this.appointments.deleteAllAppointments();
 	}
 
 	private Errors applyAndValidate(AppointmentRequest request, Appointment appointment) {
