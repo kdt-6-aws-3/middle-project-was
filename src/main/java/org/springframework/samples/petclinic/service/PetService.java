@@ -1,19 +1,3 @@
-/*
- * Copyright 2012-2025 the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package org.springframework.samples.petclinic.service;
 
 import java.time.LocalDate;
@@ -36,16 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.Errors;
 
-/**
- * Adding, editing and deleting the pets of an owner. Pets are saved through their owner.
- */
 @Service
 public class PetService {
 
-	/**
-	 * Errors are collected on {@link Pet}, whose {@code type} is {@code typeId} in the
-	 * API.
-	 */
 	private static final Map<String, String> FIELD_ALIASES = Map.of("type", "typeId");
 
 	private final OwnerRepository owners;
@@ -69,7 +46,6 @@ public class PetService {
 		Pet pet = new Pet();
 		throwIfInvalid(applyAndValidate(request, pet));
 
-		// pet names may repeat within an owner, so the new pet is found by its new id
 		Set<Integer> existingPetIds = owner.getPets().stream().map(Pet::getId).collect(Collectors.toSet());
 		owner.addPet(pet);
 		Owner saved = this.owners.saveAndFlush(owner);
@@ -95,9 +71,6 @@ public class PetService {
 		return PetDetails.from(saved.getPet(petId));
 	}
 
-	/**
-	 * Deletes the pet together with its visits and appointments.
-	 */
 	@Transactional
 	public void deletePet(int ownerId, int petId) {
 		Owner owner = findOwner(ownerId);
@@ -107,9 +80,6 @@ public class PetService {
 		this.owners.save(owner);
 	}
 
-	/**
-	 * Copies the request onto the pet and runs the original PetClinic pet rules.
-	 */
 	private Errors applyAndValidate(PetRequest request, Pet pet) {
 		pet.setName(request.name());
 		pet.setBirthDate(request.birthDate());
@@ -120,7 +90,7 @@ public class PetService {
 		}
 		new PetValidator().validate(pet, errors);
 		if (request.typeId() == null && !pet.isNew()) {
-			// PetValidator only requires a type for new pets; the API always requires it
+
 			errors.rejectValue("type", "required", "required");
 		}
 		if (pet.getBirthDate() != null && pet.getBirthDate().isAfter(LocalDate.now())) {

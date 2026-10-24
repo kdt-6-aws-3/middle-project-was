@@ -1,19 +1,3 @@
-/*
- * Copyright 2012-2025 the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package org.springframework.samples.petclinic.repository;
 
 import java.time.LocalDateTime;
@@ -27,15 +11,8 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.samples.petclinic.entity.Appointment;
 import org.springframework.samples.petclinic.entity.AppointmentStatus;
 
-/**
- * Repository class for <code>Appointment</code> domain objects.
- */
 public interface AppointmentRepository extends JpaRepository<Appointment, Integer> {
 
-	/**
-	 * Appointments matching every given filter (a {@code null} filter matches all),
-	 * earliest first.
-	 */
 	@Query("""
 			SELECT a FROM Appointment a
 			WHERE (:hospitalId IS NULL OR a.hospital.id = :hospitalId)
@@ -46,10 +23,6 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Intege
 	List<Appointment> search(@Param("hospitalId") Integer hospitalId, @Param("vetId") Integer vetId,
 			@Param("petId") Integer petId, @Param("status") AppointmentStatus status);
 
-	/**
-	 * A vet's appointments from {@code from} (inclusive) to {@code to} (exclusive),
-	 * earliest first, cancelled ones included.
-	 */
 	@Query("""
 			SELECT a FROM Appointment a
 			WHERE a.vet.id = :vetId AND a.appointmentAt >= :from AND a.appointmentAt < :to
@@ -57,10 +30,6 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Intege
 	List<Appointment> findVetSchedule(@Param("vetId") Integer vetId, @Param("from") LocalDateTime from,
 			@Param("to") LocalDateTime to);
 
-	/**
-	 * Whether the vet already has a non-cancelled appointment at that time, ignoring the
-	 * appointment with id {@code excludeId} (the one being changed, or {@code null}).
-	 */
 	@Query("""
 			SELECT COUNT(a) > 0 FROM Appointment a
 			WHERE a.vet.id = :vetId AND a.appointmentAt = :appointmentAt
@@ -69,10 +38,6 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Intege
 	boolean isVetBooked(@Param("vetId") Integer vetId, @Param("appointmentAt") LocalDateTime appointmentAt,
 			@Param("excludeId") Integer excludeId);
 
-	/**
-	 * Whether the pet already has a non-cancelled appointment at that time, ignoring the
-	 * appointment with id {@code excludeId} (the one being changed, or {@code null}).
-	 */
 	@Query("""
 			SELECT COUNT(a) > 0 FROM Appointment a
 			WHERE a.pet.id = :petId AND a.appointmentAt = :appointmentAt
@@ -81,18 +46,10 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Intege
 	boolean isPetBooked(@Param("petId") Integer petId, @Param("appointmentAt") LocalDateTime appointmentAt,
 			@Param("excludeId") Integer excludeId);
 
-	/**
-	 * Deletes the appointments of the given pets. Needed before deleting pets because
-	 * appointments.pet_id has no ON DELETE CASCADE.
-	 */
 	@Modifying
 	@Query("DELETE FROM Appointment a WHERE a.pet.id IN :petIds")
 	void deleteByPetIds(@Param("petIds") Collection<Integer> petIds);
 
-	/**
-	 * Deletes every appointment in one statement.
-	 * @return the number of deleted appointments
-	 */
 	@Modifying
 	@Query("DELETE FROM Appointment a")
 	int deleteAllAppointments();

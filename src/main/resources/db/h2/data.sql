@@ -1,12 +1,3 @@
--- Local/test copy of db/mysql/data.sql (same rows and ids). Keep both in sync.
-
--- ==================================================
--- 1. 병원: 대전광역시 동구 소재 실제 동물병원 10곳
--- 조사 기준일: 2026-10-22. 공개 목록 및 네이버 지도 진료 안내를 대조함.
--- 당일 영업 상태를 전화/현장 확인한 데이터는 아님.
--- 출처 및 확인 범위: docs/hospital-seed-sources-2026-10-22.txt
--- 병원 정보만 실제 자료이며 아래 수의사/보호자/진료 정보는 가상 테스트 데이터임.
--- ==================================================
 INSERT INTO hospitals (id, hospital_name, address, phone) VALUES
 (1,  '가람동물병원', '대전광역시 동구 옥천로 193, 1층 (판암동)', '0423457588'),
 (2,  '가양동물의료센터', '대전광역시 동구 동대전로 280 (가양동)', '0426368855'),
@@ -19,9 +10,6 @@ INSERT INTO hospitals (id, hospital_name, address, phone) VALUES
 (9,  '솔펫동물병원', '대전광역시 동구 동대전로 141 (자양동, 우송 제2교육원)', '0426227525'),
 (10, '웰니스 동물병원 대전복합터미널', '대전광역시 동구 동서대로 1689, 대전복합터미널(서관) 3층 (용전동)', '0426246275');
 
--- ==================================================
--- 2. 전문 분야
--- ==================================================
 INSERT INTO specialties (id, specialty_name) VALUES
 (1, '내과'),
 (2, '외과'),
@@ -29,9 +17,6 @@ INSERT INTO specialties (id, specialty_name) VALUES
 (4, '치과'),
 (5, '영상의학과');
 
--- ==================================================
--- 3. 수의사: 각 병원에 1명씩 배정
--- ==================================================
 INSERT INTO vets (id, hospital_id, vet_name) VALUES
 (1,  1,  '김민준'),
 (2,  2,  '이서연'),
@@ -44,10 +29,6 @@ INSERT INTO vets (id, hospital_id, vet_name) VALUES
 (9,  9,  '장예준'),
 (10, 10, '임서윤');
 
--- ==================================================
--- 4. 수의사별 전문 분야
--- 한 수의사의 복수 전문 분야 및 전문 분야 미등록 사례 포함
--- ==================================================
 INSERT INTO vet_specialties (vet_id, specialty_id) VALUES
 (1, 1),
 (1, 3),
@@ -62,11 +43,6 @@ INSERT INTO vet_specialties (vet_id, specialty_id) VALUES
 (8, 3),
 (9, 4);
 
--- 수의사 10번은 전문 분야 미등록: 연결 행을 넣지 않음
-
--- ==================================================
--- 5. 보호자
--- ==================================================
 INSERT INTO owners (id, owner_name, address, phone) VALUES
 (1,  '김지훈', '대전광역시 동구 가양동 테스트주소 201',   '000-0000-2001'),
 (2,  '이민지', '대전광역시 동구 용전동 테스트주소 202',   '000-0000-2002'),
@@ -79,9 +55,6 @@ INSERT INTO owners (id, owner_name, address, phone) VALUES
 (9,  '장소윤', '대전광역시 동구 가오동 테스트주소 209',     '000-0000-2009'),
 (10, '임재현', '대전광역시 동구 대성동 테스트주소 210', '000-0000-2010');
 
--- ==================================================
--- 6. 동물 종류
--- ==================================================
 INSERT INTO types (id, type_name) VALUES
 (1, '개'),
 (2, '고양이'),
@@ -90,10 +63,6 @@ INSERT INTO types (id, type_name) VALUES
 (5, '새'),
 (6, '거북이');
 
--- ==================================================
--- 7. 반려동물
--- 보호자 1번은 2마리 보유, 보호자 10번은 아직 반려동물 미등록
--- ==================================================
 INSERT INTO pets (id, type_id, owner_id, pet_name, birth_date) VALUES
 (1,  1, 1, '초코', '2021-03-15'),
 (2,  2, 1, '나비', '2022-07-20'),
@@ -106,12 +75,6 @@ INSERT INTO pets (id, type_id, owner_id, pet_name, birth_date) VALUES
 (9,  5, 8, '하늘', '2024-04-03'),
 (10, 6, 9, '꼬북', '2018-08-09');
 
--- ==================================================
--- 8. 방문·진료 기록
--- 반려동물별 복수 방문 및 방문 이력 없는 사례 포함
--- 실제 의약품명을 사용한 가상 진단·검사·처방 테스트 데이터임. 실제 병원의 환자 사례가 아님.
--- 처방이 없는 진료는 NULL이며, 용량/투약 지시는 포함하지 않음.
--- ==================================================
 INSERT INTO visits (id, pet_id, visit_date, description, prescription) VALUES
 (1,  1, '2026-09-01', '정기 건강검진 실시. 체중과 전반적인 건강 상태 확인.', NULL),
 (2,  1, '2026-10-01', '예방접종 실시. 접종 후 주의사항 안내.', NULL),
@@ -126,13 +89,6 @@ INSERT INTO visits (id, pet_id, visit_date, description, prescription) VALUES
 (11, 8, '2026-09-20', '반복 구토로 내원. 진찰 및 기본 검사로 원인 평가 후 구토 조절을 위한 항구토 주사제 처치. 수분 상태와 구토 재발 여부 추적 관찰 안내.', '세레니아 주사제(Cerenia, 마로피탄트)'),
 (12, 9, '2026-10-02', '깃털 상태 확인. 사육 환경 관리 방법 안내.', NULL);
 
--- 반려동물 10번은 아직 방문 이력 없음
-
--- ==================================================
--- 9. 진료 예약
--- 상태: REQUESTED(요청), CONFIRMED(확정), CANCELLED(취소), COMPLETED(완료)
--- 담당 수의사는 예약 병원 소속(vet N -> hospital N), 완료 예약은 방문 기록과 같은 날짜
--- ==================================================
 INSERT INTO appointments (id, hospital_id, pet_id, vet_id, appointment_at, status, reason, created_at) VALUES
 (1,  1, 1,  1, '2026-09-01 10:00:00', 'COMPLETED', '정기 건강검진',         '2026-08-25 09:12:00'),
 (2,  1, 1,  1, '2026-10-01 11:00:00', 'COMPLETED', '예방접종',              '2026-09-20 14:03:00'),
@@ -145,9 +101,6 @@ INSERT INTO appointments (id, hospital_id, pet_id, vet_id, appointment_at, statu
 (9,  8, 9,  8, '2026-11-05 11:30:00', 'REQUESTED', '깃털 상태 확인',        '2026-10-21 10:05:00'),
 (10, 9, 10, 9, '2026-11-06 15:00:00', 'REQUESTED', NULL,                    '2026-10-21 11:40:00');
 
--- 반려동물 8번은 예약 이력 없음, 예약 10번은 사유 미입력
-
--- Rows were inserted with explicit ids, so move each identity past them
 ALTER TABLE hospitals ALTER COLUMN id RESTART WITH 11;
 ALTER TABLE specialties ALTER COLUMN id RESTART WITH 6;
 ALTER TABLE vets ALTER COLUMN id RESTART WITH 11;

@@ -1,4 +1,3 @@
--- 1. 병원
 CREATE TABLE hospitals (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     hospital_name VARCHAR(255) NOT NULL,
@@ -10,7 +9,6 @@ CREATE TABLE hospitals (
         CHECK (phone REGEXP '^[0-9]{2,3}-[0-9]{3,4}-[0-9]{4}$')
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 2. 수의사
 CREATE TABLE vets (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     hospital_id INT UNSIGNED NOT NULL,
@@ -20,13 +18,11 @@ CREATE TABLE vets (
         FOREIGN KEY (hospital_id) REFERENCES hospitals(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 3. 전문 분야
 CREATE TABLE specialties (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     specialty_name VARCHAR(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 4. 수의사별 전문 분야
 CREATE TABLE vet_specialties (
     vet_id INT UNSIGNED NOT NULL,
     specialty_id INT UNSIGNED NOT NULL,
@@ -38,7 +34,6 @@ CREATE TABLE vet_specialties (
     CONSTRAINT uq_vet_specialties UNIQUE (vet_id, specialty_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 5. 보호자
 CREATE TABLE owners (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     owner_name VARCHAR(255) NOT NULL,
@@ -50,13 +45,11 @@ CREATE TABLE owners (
         CHECK (phone REGEXP '^[0-9]{2,3}-[0-9]{3,4}-[0-9]{4}$')
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 6. 동물 종류
 CREATE TABLE types (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     type_name VARCHAR(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 7. 반려동물
 CREATE TABLE pets (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     type_id INT UNSIGNED NOT NULL,
@@ -70,7 +63,6 @@ CREATE TABLE pets (
         FOREIGN KEY (owner_id) REFERENCES owners(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 8. 방문·진료 기록
 CREATE TABLE visits (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     pet_id INT UNSIGNED NOT NULL,
@@ -82,7 +74,6 @@ CREATE TABLE visits (
         FOREIGN KEY (pet_id) REFERENCES pets(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 9. 진료 예약
 CREATE TABLE appointments (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     hospital_id INT UNSIGNED NOT NULL,
@@ -92,7 +83,7 @@ CREATE TABLE appointments (
     status VARCHAR(20) NOT NULL DEFAULT 'REQUESTED',
     reason VARCHAR(255),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    -- 취소된 예약은 슬롯을 해제하여 같은 시간에 다시 예약할 수 있도록 함
+
     active_slot TINYINT GENERATED ALWAYS AS (IF(status = 'CANCELLED', NULL, 1)) STORED,
     UNIQUE KEY uk_appointments_vet_slot (vet_id, appointment_at, active_slot),
     UNIQUE KEY uk_appointments_pet_slot (pet_id, appointment_at, active_slot),

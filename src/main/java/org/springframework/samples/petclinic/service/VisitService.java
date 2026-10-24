@@ -1,19 +1,3 @@
-/*
- * Copyright 2012-2025 the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package org.springframework.samples.petclinic.service;
 
 import java.time.LocalDate;
@@ -34,11 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.Errors;
 
-/**
- * Recording and correcting the visits (treatment records) of a pet. A record is written
- * after the treatment, so its date is today or earlier; bookings for the future are
- * appointments. Visits are saved through the pet's owner.
- */
 @Service
 public class VisitService {
 
@@ -76,10 +55,6 @@ public class VisitService {
 		return VisitDetails.from(created);
 	}
 
-	/**
-	 * Corrects the date, description or prescription of a visit; the date rule of
-	 * recording applies.
-	 */
 	public VisitDetails updateVisit(int ownerId, int petId, int visitId, VisitRequest request) {
 		Owner owner = findOwner(ownerId);
 		Visit visit = findVisit(findPet(owner, petId), visitId);
@@ -105,17 +80,10 @@ public class VisitService {
 		this.owners.save(owner);
 	}
 
-	/**
-	 * An empty prescription means nothing was prescribed and is stored as NULL.
-	 */
 	private static String blankToNull(String prescription) {
 		return (prescription == null || prescription.isBlank()) ? null : prescription.strip();
 	}
 
-	/**
-	 * A treatment cannot be recorded before it happened. Past dates are allowed so paper
-	 * records can be entered later.
-	 */
 	private static void throwIfInFuture(Visit visit) {
 		if (visit.getDate().isAfter(LocalDate.now())) {
 			Errors errors = new BeanPropertyBindingResult(visit, "visit");

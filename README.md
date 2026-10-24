@@ -40,7 +40,7 @@ AWS 3-Tier(WEB · WAS · DB) 인프라 구축 프로젝트의 **WAS 계층** 애
 | 웹 서버 | 내장 Tomcat 11 (실행 가능한 JAR) |
 | 영속성 | Spring Data JPA (Hibernate) |
 | DB | H2(기본, 개발용) / MySQL(`mysql` 프로파일) |
-| 빌드 | Maven Wrapper(`mvnw`), Gradle Wrapper(`gradlew`) |
+| 빌드 | Maven Wrapper(`mvnw`) |
 
 ## 패키지 구조
 
@@ -88,15 +88,14 @@ JDK 21이 필요합니다.
 
 React 개발 서버에서 호출할 때는 React 개발 서버의 프록시 기능으로 `/api`를 `http://localhost:8080`에 연결합니다. 운영에서는 같은 도메인(Apache 경유)이라 CORS 설정이 필요 없습니다.
 
-## 빌드와 테스트
+## 빌드
 
 ```bash
-./mvnw clean verify
+./mvnw clean package
 ```
 
 - 결과물: `target/spring-petclinic-4.0.0-SNAPSHOT.jar` (실행 가능한 JAR)
-- MySQL 통합 테스트는 Docker가 있을 때만 실행되고, 없으면 자동으로 건너뜁니다.
-- **프로젝트 경로에 한글 등 영문이 아닌 문자가 있으면** checkstyle(nohttp) 단계에서 설정 파일 경로를 읽지 못해 빌드가 실패합니다. 영문 경로(예: `C:\dev\spring-petclinic`)에서 빌드하세요.
+- 자동 테스트는 없습니다. 코드나 `db/mysql` 스키마·데이터를 바꾼 뒤에는 로컬(H2)과 RDS(또는 로컬 MySQL)에서 API를 직접 호출해 확인합니다.
 
 ## MySQL로 실행
 

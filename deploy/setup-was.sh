@@ -1,12 +1,4 @@
 #!/bin/bash
-# Sets up the PetClinic WAS on Amazon Linux 2023. Safe to run again (e.g. to replace the JAR).
-#
-# Usage: sudo bash setup-was.sh <path to spring-petclinic-*.jar>
-#
-# 1st run : installs Java, the service and an env file template, then stops so the DB
-#           connection info can be filled in.
-# 2nd run : (after editing /etc/petclinic/petclinic.env) starts the service and waits
-#           for the health check.
 set -euo pipefail
 
 JAR_SRC="${1:?Usage: sudo $0 <path to spring-petclinic-*.jar>}"

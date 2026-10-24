@@ -1,19 +1,3 @@
-/*
- * Copyright 2012-2025 the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package org.springframework.samples.petclinic.service;
 
 import java.time.LocalDate;
@@ -36,17 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.Errors;
 
-/**
- * Booking, rescheduling and changing the status of appointments. Appointments start on
- * the hour or half hour (30-minute slots), and a vet or a pet can have only one
- * non-cancelled appointment per slot.
- */
 @Service
 public class AppointmentService {
 
-	/**
-	 * Errors are collected on {@link Appointment}, whose relations are ids in the API.
-	 */
 	private static final int SLOT_MINUTES = 30;
 
 	private static final Map<String, String> FIELD_ALIASES = Map.of("hospital", "hospitalId", "pet", "petId", "vet",
@@ -76,10 +52,6 @@ public class AppointmentService {
 			.toList();
 	}
 
-	/**
-	 * A vet's appointments on one day (00:00 to 24:00), earliest first. Cancelled ones
-	 * are included with their status so the screen can show or hide them.
-	 */
 	public List<AppointmentDetails> getVetSchedule(int vetId, LocalDate date) {
 		if (this.vets.findById(vetId).isEmpty()) {
 			throw new ResourceNotFoundException("Vet " + vetId + " not found");
@@ -94,9 +66,6 @@ public class AppointmentService {
 		return AppointmentDetails.from(findAppointment(appointmentId));
 	}
 
-	/**
-	 * Books a new appointment; it starts as {@link AppointmentStatus#REQUESTED}.
-	 */
 	public AppointmentDetails createAppointment(AppointmentRequest request) {
 		Appointment appointment = new Appointment();
 		throwIfInvalid(applyAndValidate(request, appointment));
@@ -104,10 +73,6 @@ public class AppointmentService {
 		return AppointmentDetails.from(this.appointments.save(appointment));
 	}
 
-	/**
-	 * Changes hospital, pet, vet, time or reason. Cancelled and completed appointments
-	 * cannot be changed.
-	 */
 	public AppointmentDetails updateAppointment(int appointmentId, AppointmentRequest request) {
 		Appointment appointment = findAppointment(appointmentId);
 		throwIfClosed(appointment);
@@ -115,10 +80,6 @@ public class AppointmentService {
 		return AppointmentDetails.from(this.appointments.save(appointment));
 	}
 
-	/**
-	 * Moves the appointment to another status. Cancelled and completed appointments are
-	 * final.
-	 */
 	public AppointmentDetails changeStatus(int appointmentId, AppointmentStatus status) {
 		Appointment appointment = findAppointment(appointmentId);
 		throwIfClosed(appointment);
@@ -130,11 +91,6 @@ public class AppointmentService {
 		this.appointments.delete(findAppointment(appointmentId));
 	}
 
-	/**
-	 * Deletes all appointments (e.g. to reset data between load tests). Owners, pets and
-	 * visits are kept.
-	 * @return the number of deleted appointments
-	 */
 	@Transactional
 	public int deleteAllAppointments() {
 		return this.appointments.deleteAllAppointments();
@@ -158,9 +114,7 @@ public class AppointmentService {
 		appointment.setAppointmentAt(request.appointmentAt());
 		appointment.setReason(request.reason());
 		LocalDateTime at = request.appointmentAt();
-		// same-day booking: a slot can be booked until it ends (a 10:00 slot until
-		// 10:30),
-		// so a walk-in at 10:10 still gets the 10:00 slot
+
 		if (!at.plusMinutes(SLOT_MINUTES).isAfter(LocalDateTime.now())) {
 			errors.rejectValue("appointmentAt", "appointment.slotPassed");
 		}
@@ -168,8 +122,7 @@ public class AppointmentService {
 			errors.rejectValue("appointmentAt", "appointment.notOnSlot");
 		}
 		else {
-			// friendly check; the unique indexes in the schema also stop concurrent
-			// bookings
+
 			if (appointment.getVet() != null
 					&& this.appointments.isVetBooked(appointment.getVet().getId(), at, appointment.getId())) {
 				errors.rejectValue("appointmentAt", "appointment.vetTimeTaken");

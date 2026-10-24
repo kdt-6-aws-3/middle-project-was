@@ -1,19 +1,3 @@
-/*
- * Copyright 2012-2025 the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package org.springframework.samples.petclinic.entity;
 
 import java.time.LocalDate;
@@ -21,8 +5,6 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
-
-import org.springframework.format.annotation.DateTimeFormat;
 
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.CascadeType;
@@ -35,28 +17,18 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 
-/**
- * Simple business object representing a pet.
- *
- * @author Ken Krebs
- * @author Juergen Hoeller
- * @author Sam Brannen
- * @author Wick Dynex
- */
 @Entity
 @Table(name = "pets")
 @AttributeOverride(name = "name", column = @Column(name = "pet_name"))
 public class Pet extends NamedEntity {
 
 	@Column
-	@DateTimeFormat(pattern = "yyyy-MM-dd")
 	private LocalDate birthDate;
 
 	@ManyToOne
 	@JoinColumn(name = "type_id")
 	private PetType type;
 
-	// visits.pet_id is NOT NULL: written in the INSERT itself (see Owner#pets)
 	@OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
 	@JoinColumn(name = "pet_id", nullable = false)
 	@OrderBy("date ASC")
@@ -86,9 +58,6 @@ public class Pet extends NamedEntity {
 		getVisits().add(visit);
 	}
 
-	/**
-	 * Return the visit with the given id, or null if this pet has no such visit.
-	 */
 	public Visit getVisit(Integer id) {
 		for (Visit visit : getVisits()) {
 			if (!visit.isNew() && Objects.equals(visit.getId(), id)) {
@@ -98,9 +67,6 @@ public class Pet extends NamedEntity {
 		return null;
 	}
 
-	/**
-	 * Removes the visit; with orphan removal it is deleted on save.
-	 */
 	public void removeVisit(Visit visit) {
 		getVisits().remove(visit);
 	}
