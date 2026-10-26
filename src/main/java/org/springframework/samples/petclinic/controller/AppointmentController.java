@@ -1,13 +1,13 @@
 package org.springframework.samples.petclinic.controller;
 
 import java.net.URI;
-import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.samples.petclinic.dto.AppointmentDetails;
 import org.springframework.samples.petclinic.dto.AppointmentRequest;
 import org.springframework.samples.petclinic.dto.AppointmentStatusRequest;
+import org.springframework.samples.petclinic.dto.PageResponse;
 import org.springframework.samples.petclinic.entity.AppointmentStatus;
 import org.springframework.samples.petclinic.service.AppointmentService;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -34,10 +34,11 @@ class AppointmentController {
 	}
 
 	@GetMapping
-	List<AppointmentDetails> findAppointments(@RequestParam(required = false) Integer hospitalId,
+	PageResponse<AppointmentDetails> findAppointments(@RequestParam(required = false) Integer hospitalId,
 			@RequestParam(required = false) Integer vetId, @RequestParam(required = false) Integer petId,
-			@RequestParam(required = false) AppointmentStatus status) {
-		return this.appointmentService.findAppointments(hospitalId, vetId, petId, status);
+			@RequestParam(required = false) AppointmentStatus status, @RequestParam(defaultValue = "1") int page,
+			@RequestParam(defaultValue = "20") int size) {
+		return this.appointmentService.findAppointments(hospitalId, vetId, petId, status, page, size);
 	}
 
 	@GetMapping("/{appointmentId}")

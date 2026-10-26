@@ -29,7 +29,7 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
 | GET | `/api/hospitals/{hospitalId}` | 병원 상세 |
 | GET | `/api/hospitals/{hospitalId}/vets` | 병원 소속 수의사 목록 |
 | GET | `/api/vets` | 수의사 목록 (병원·전문 분야 포함, 캐시) |
-| GET | `/api/appointments?hospitalId=&vetId=&petId=&status=` | 진료 예약 목록 (조건은 모두 선택) |
+| GET | `/api/appointments?hospitalId=&vetId=&petId=&status=&page=&size=` | 진료 예약 목록 (조건은 모두 선택, 페이지 단위) |
 | GET | `/api/appointments/{appointmentId}` | 진료 예약 상세 |
 | POST | `/api/appointments` | 진료 예약 등록 |
 | PUT | `/api/appointments/{appointmentId}` | 진료 예약 변경 (병원·반려동물·수의사·일시·사유) |
@@ -254,30 +254,38 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
 | `vetId` | 이 수의사의 예약만 |
 | `petId` | 이 반려동물의 예약만 |
 | `status` | 이 상태의 예약만 (위 4가지 값, 그 외 값은 `400`) |
+| `page` | 페이지 번호, 1부터. 기본 `1` (1보다 작으면 1) |
+| `size` | 페이지 크기. 기본 `20`, 1~100 (범위를 벗어나면 가까운 값으로 조정) |
 
-조건을 주지 않으면 전체이며, 응답 `200`: 예약 일시순
+조건을 주지 않으면 전체 예약을 페이지로 나눠 돌려줍니다. 응답 `200`: 예약 일시순, 보호자 목록과 같은 페이지 형식
 
 ```json
-[
-  {
-    "id": 4,
-    "hospitalId": 2,
-    "hospitalName": "펫클리닉 서초점",
-    "petId": 3,
-    "petName": "보리",
-    "vetId": 2,
-    "vetName": "이서연",
-    "appointmentAt": "2026-10-28T10:30:00",
-    "status": "CONFIRMED",
-    "reason": "관절 상태 재검진",
-    "createdAt": "2026-10-15T09:00:00"
-  }
-]
+{
+  "content": [
+    {
+      "id": 4,
+      "hospitalId": 2,
+      "hospitalName": "펫클리닉 서초점",
+      "petId": 3,
+      "petName": "보리",
+      "vetId": 2,
+      "vetName": "이서연",
+      "appointmentAt": "2026-10-28T10:30:00",
+      "status": "CONFIRMED",
+      "reason": "관절 상태 재검진",
+      "createdAt": "2026-10-15T09:00:00"
+    }
+  ],
+  "page": 1,
+  "size": 20,
+  "totalElements": 10,
+  "totalPages": 1
+}
 ```
 
 ### GET `/api/appointments/{appointmentId}`
 
-응답 `200`: 위 목록 항목과 같은 형식. 없으면 `404`.
+응답 `200`: 위 목록의 `content` 항목과 같은 형식. 없으면 `404`.
 
 ### POST `/api/appointments`
 

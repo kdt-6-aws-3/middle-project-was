@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -13,15 +15,20 @@ import org.springframework.samples.petclinic.entity.AppointmentStatus;
 
 public interface AppointmentRepository extends JpaRepository<Appointment, Integer> {
 
-	@Query("""
+	@Query(value = """
 			SELECT a FROM Appointment a
 			WHERE (:hospitalId IS NULL OR a.hospital.id = :hospitalId)
 			  AND (:vetId IS NULL OR a.vet.id = :vetId)
 			  AND (:petId IS NULL OR a.pet.id = :petId)
 			  AND (:status IS NULL OR a.status = :status)
-			ORDER BY a.appointmentAt, a.id""")
-	List<Appointment> search(@Param("hospitalId") Integer hospitalId, @Param("vetId") Integer vetId,
-			@Param("petId") Integer petId, @Param("status") AppointmentStatus status);
+			ORDER BY a.appointmentAt, a.id""", countQuery = """
+			SELECT COUNT(a) FROM Appointment a
+			WHERE (:hospitalId IS NULL OR a.hospital.id = :hospitalId)
+			  AND (:vetId IS NULL OR a.vet.id = :vetId)
+			  AND (:petId IS NULL OR a.pet.id = :petId)
+			  AND (:status IS NULL OR a.status = :status)""")
+	Page<Appointment> search(@Param("hospitalId") Integer hospitalId, @Param("vetId") Integer vetId,
+			@Param("petId") Integer petId, @Param("status") AppointmentStatus status, Pageable pageable);
 
 	@Query("""
 			SELECT a FROM Appointment a

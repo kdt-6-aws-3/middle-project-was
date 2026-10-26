@@ -5,8 +5,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.samples.petclinic.dto.AppointmentDetails;
 import org.springframework.samples.petclinic.dto.AppointmentRequest;
+import org.springframework.samples.petclinic.dto.PageResponse;
 import org.springframework.samples.petclinic.entity.Appointment;
 import org.springframework.samples.petclinic.entity.AppointmentStatus;
 import org.springframework.samples.petclinic.exception.ApiValidationException;
@@ -24,6 +26,8 @@ import org.springframework.validation.Errors;
 public class AppointmentService {
 
 	private static final int SLOT_MINUTES = 30;
+
+	private static final int MAX_PAGE_SIZE = 100;
 
 	private static final Map<String, String> FIELD_ALIASES = Map.of("hospital", "hospitalId", "pet", "petId", "vet",
 			"vetId");
@@ -44,12 +48,12 @@ public class AppointmentService {
 		this.vets = vets;
 	}
 
-	public List<AppointmentDetails> findAppointments(Integer hospitalId, Integer vetId, Integer petId,
-			AppointmentStatus status) {
-		return this.appointments.search(hospitalId, vetId, petId, status)
-			.stream()
-			.map(AppointmentDetails::from)
-			.toList();
+	public PageResponse<AppointmentDetails> findAppointments(Integer hospitalId, Integer vetId, Integer petId,
+			AppointmentStatus status, int page, int size) {
+		int validatedPage = Math.max(page, 1);
+		int validatedSize = Math.clamp(size, 1, MAX_PAGE_SIZE);
+		return PageResponse.from(this.appointments.search(hospitalId, vetId, petId, status,
+				PageRequest.of(validatedPage - 1, validatedSize)), AppointmentDetails::from);
 	}
 
 	public List<AppointmentDetails> getVetSchedule(int vetId, LocalDate date) {
