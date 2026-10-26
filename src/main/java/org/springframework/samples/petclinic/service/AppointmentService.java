@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.samples.petclinic.dto.AppointmentDetails;
@@ -53,17 +54,14 @@ public class AppointmentService {
 		int validatedPage = Math.max(page, 1);
 		int validatedSize = Math.clamp(size, 1, MAX_PAGE_SIZE);
 		return PageResponse.from(this.appointments.search(hospitalId, vetId, petId, status,
-				PageRequest.of(validatedPage - 1, validatedSize)), AppointmentDetails::from);
+				PageRequest.of(validatedPage - 1, validatedSize)), Function.identity());
 	}
 
 	public List<AppointmentDetails> getVetSchedule(int vetId, LocalDate date) {
 		if (this.vets.findById(vetId).isEmpty()) {
 			throw new ResourceNotFoundException("Vet " + vetId + " not found");
 		}
-		return this.appointments.findVetSchedule(vetId, date.atStartOfDay(), date.plusDays(1).atStartOfDay())
-			.stream()
-			.map(AppointmentDetails::from)
-			.toList();
+		return this.appointments.findVetSchedule(vetId, date.atStartOfDay(), date.plusDays(1).atStartOfDay());
 	}
 
 	public AppointmentDetails getAppointment(int appointmentId) {
