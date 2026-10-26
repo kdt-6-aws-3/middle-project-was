@@ -40,7 +40,6 @@ CREATE TABLE owners (
     address VARCHAR(255) NOT NULL,
     phone VARCHAR(50) NOT NULL,
 
-    CONSTRAINT uq_owners_phone UNIQUE (phone),
     CONSTRAINT chk_owners_phone_format
         CHECK (phone REGEXP '^[0-9]{2,3}-[0-9]{3,4}-[0-9]{4}$')
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
