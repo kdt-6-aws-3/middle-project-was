@@ -28,7 +28,7 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
 | GET | `/api/hospitals` | 병원 목록 |
 | GET | `/api/hospitals/{hospitalId}` | 병원 상세 |
 | GET | `/api/hospitals/{hospitalId}/vets` | 병원 소속 수의사 목록 |
-| GET | `/api/vets` | 수의사 목록 (병원·전문 분야 포함, 캐시) |
+| GET | `/api/vets?page=&size=` | 수의사 목록 (병원·전문 분야 포함, 페이지 단위) |
 | GET | `/api/appointments?hospitalId=&vetId=&petId=&status=&page=&size=` | 진료 예약 목록 (조건은 모두 선택, 페이지 단위) |
 | GET | `/api/appointments/{appointmentId}` | 진료 예약 상세 |
 | POST | `/api/appointments` | 진료 예약 등록 |
@@ -226,17 +226,28 @@ WAS(Spring Boot)는 화면을 제공하지 않고 JSON API만 제공합니다. D
 
 ### GET `/api/vets`
 
-응답 `200`
+| 파라미터 | 설명 |
+| --- | --- |
+| `page` | 페이지 번호, 1부터. 기본 `1` (1보다 작으면 1) |
+| `size` | 페이지 크기. 기본 `20`, 1~100 (범위를 벗어나면 가까운 값으로 조정) |
+
+응답 `200`: ID순, 보호자 목록과 같은 페이지 형식
 
 ```json
-[
-  {
-    "id": 1,
-    "name": "김민준",
-    "hospital": { "id": 1, "name": "펫클리닉 강남점", "address": "서울특별시 강남구 테스트로 101", "phone": "000-0000-1001" },
-    "specialties": [ { "id": 1, "name": "내과" }, { "id": 3, "name": "피부과" } ]
-  }
-]
+{
+  "content": [
+    {
+      "id": 1,
+      "name": "김민준",
+      "hospital": { "id": 1, "name": "펫클리닉 강남점", "address": "서울특별시 강남구 테스트로 101", "phone": "000-0000-1001" },
+      "specialties": [ { "id": 1, "name": "내과" }, { "id": 3, "name": "피부과" } ]
+    }
+  ],
+  "page": 1,
+  "size": 20,
+  "totalElements": 20,
+  "totalPages": 1
+}
 ```
 
 ## 진료 예약

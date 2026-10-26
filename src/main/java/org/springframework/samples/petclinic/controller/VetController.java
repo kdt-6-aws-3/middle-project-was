@@ -1,10 +1,10 @@
 package org.springframework.samples.petclinic.controller;
 
-import java.util.List;
-
+import org.springframework.samples.petclinic.dto.PageResponse;
 import org.springframework.samples.petclinic.dto.VetDetails;
 import org.springframework.samples.petclinic.service.VetService;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -17,8 +17,9 @@ class VetController {
 	}
 
 	@GetMapping("/api/vets")
-	List<VetDetails> listVets() {
-		return this.vetService.listVets();
+	PageResponse<VetDetails> listVets(@RequestParam(defaultValue = "1") int page,
+			@RequestParam(defaultValue = "20") int size) {
+		return this.vetService.listVets(page, size);
 	}
 
 }

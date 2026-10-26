@@ -69,7 +69,7 @@ org.springframework.samples.petclinic
 | GET · POST · PUT · DELETE | `/api/owners/{ownerId}/pets`, `/api/owners/{ownerId}/pets/{petId}` | 반려동물 상세·등록·수정·삭제 |
 | GET · POST · PUT · DELETE | `/api/owners/{ownerId}/pets/{petId}/visits`, `…/visits/{visitId}` | 진료 기록 목록·등록·수정·삭제 |
 | GET | `/api/hospitals`, `/api/hospitals/{hospitalId}`, `/api/hospitals/{hospitalId}/vets` | 병원 목록·상세·소속 수의사 |
-| GET | `/api/vets` | 수의사 목록 (병원 포함) |
+| GET | `/api/vets?page=&size=` | 수의사 목록 (병원 포함, 페이지 단위) |
 | GET · POST · PUT · PATCH · DELETE | `/api/appointments`, `/api/appointments/{appointmentId}`, `…/status` | 진료 예약 목록·상세·등록·변경·상태 변경·삭제 |
 | GET | `/api/pettypes` | 동물 종류 목록 |
 | GET | `/actuator/health` | 헬스 체크 |
