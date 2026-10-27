@@ -116,9 +116,24 @@ Amazon Linux 2023 기준입니다. 원본 EC2 한 대에서 이 레포를 받아
 | 파일 | 역할 |
 | --- | --- |
 | `deploy/build-and-deploy.sh` | git·JDK 설치 → `git pull` → `./mvnw` 빌드 → `setup-was.sh` 실행 |
-| `deploy/setup-was.sh` | Corretto 21 설치, `petclinic` 계정 생성, JAR·환경 파일·서비스 설치 후 시작 |
+| `deploy/setup-was.sh` | Corretto 21 설치, `petclinic` 계정 생성, JAR·시작 스크립트·서비스 설치 후 시작 |
+| `deploy/start.sh` | Parameter Store에서 DB 접속 정보를 읽어 환경 변수로 넘기고 Java 실행 → `/opt/petclinic/start.sh` |
 | `deploy/petclinic.service` | systemd 서비스 → `/etc/systemd/system/` (부팅 시 자동 시작, 비정상 종료 시 10초 뒤 재시작, 시간대 `Asia/Seoul`) |
-| `deploy/petclinic.env.example` | DB 접속 정보 양식 → `/etc/petclinic/petclinic.env` (root만 읽기, 600) |
+
+### DB 접속 정보 (Parameter Store)
+
+DB 접속 정보는 서버 파일에 두지 않고 Systems Manager Parameter Store에 둡니다. `start.sh`가 서비스를 시작할 때마다 읽어 Java 프로세스의 환경 변수로만 넘기므로 디스크와 AMI에 남지 않습니다. 이 방식을 고른 이유는 `start.sh` 주석에 있습니다.
+
+| 파라미터 (모두 SecureString, `alias/aws/ssm`) | 넘겨지는 환경 변수 | 값 |
+| --- | --- | --- |
+| `/petclinic/db/url` | `SPRING_DATASOURCE_URL` | `jdbc:mysql://<RDS 엔드포인트>:3306/petclinic` |
+| `/petclinic/db/username` | `SPRING_DATASOURCE_USERNAME` | 앱 전용 DB 계정 |
+| `/petclinic/db/password` | `SPRING_DATASOURCE_PASSWORD` | 비밀번호 |
+| `/petclinic/db/type` | `SPRING_PROFILES_ACTIVE` | `mysql` |
+
+IAM 권한은 따로 추가하지 않습니다. SSM 접속용으로 WAS 역할에 붙인 AWS 관리형 정책 `AmazonSSMManagedInstanceCore`에 `ssm:GetParameters` 권한이 들어 있고, 기본 키 `alias/aws/ssm`으로 암호화한 값은 `kms:Decrypt` 권한 없이 복호화됩니다. 이 정책은 계정의 모든 파라미터를 읽을 수 있으므로 다른 비밀값을 Parameter Store에 둘 때는 이 점을 고려합니다.
+
+비밀번호를 바꿀 때는 Parameter Store 값을 고친 뒤 `sudo systemctl restart petclinic`(또는 ASG 인스턴스 새로 고침)만 하면 됩니다. AMI는 다시 만들 필요가 없습니다.
 
 라이브러리는 따로 설치하지 않습니다. `./mvnw`가 `pom.xml`에 적힌 라이브러리를 내려받아 실행 가능한 JAR 안에 모두 넣으므로, 서버에는 빌드용 git·JDK와 실행용 Java만 있으면 됩니다.
 
@@ -129,26 +144,25 @@ Amazon Linux 2023 기준입니다. 원본 EC2 한 대에서 이 레포를 받아
    git clone https://github.com/kdt-6-aws-3/middle-project-was.git
    ```
 
-2. 빌드·설치 스크립트를 실행합니다. 첫 실행은 설치까지만 하고 멈춥니다.
+2. Parameter Store의 DB 접속 정보를 이 서버에서 읽을 수 있는지 확인합니다. 파라미터 이름 4개가 나오고 `InvalidParameters`가 비어 있으면 됩니다.
+
+   ```bash
+   aws ssm get-parameters --region ap-northeast-2 --names /petclinic/db/url /petclinic/db/username /petclinic/db/password /petclinic/db/type --query '{found: Parameters[].Name, missing: InvalidParameters}'
+   ```
+
+3. 빌드·설치 스크립트를 실행합니다. 서비스를 시작하고 헬스 체크가 `UP`이 될 때까지 최대 300초 기다립니다.
 
    ```bash
    sudo bash middle-project-was/deploy/build-and-deploy.sh
    ```
 
-3. 환경 파일의 `<...>` 값을 DB 담당에게 받은 정보로 채웁니다. **실제 비밀번호는 레포에 커밋하지 않습니다.** (레포는 public)
+4. `sudo reboot` 뒤에도 자동으로 뜨는지 확인한 다음 AMI를 만듭니다.
 
-   ```bash
-   sudo vi /etc/petclinic/petclinic.env
-   ```
-
-4. 2번 명령을 다시 실행합니다. 서비스를 시작하고 헬스 체크가 `UP`이 될 때까지 기다립니다.
-5. `sudo reboot` 뒤에도 자동으로 뜨는지 확인한 다음 AMI를 만듭니다.
-
-- 로그: `journalctl -u petclinic -f`
-- 코드를 고친 뒤에는 푸시하고 2번 명령만 다시 실행하면 됩니다. 환경 파일은 덮어쓰지 않습니다. 바꾼 뒤에는 AMI를 새로 만듭니다.
+- 로그: `journalctl -u petclinic -f`. Parameter Store를 읽지 못하면 원인이 여기에 찍히고, 10초마다 다시 시도합니다.
+- 코드를 고친 뒤에는 푸시하고 3번 명령만 다시 실행하면 됩니다. 바꾼 뒤에는 AMI를 새로 만듭니다.
+- 예전 방식(`/etc/petclinic/petclinic.env`)으로 설치한 서버는 전환 후 `sudo rm -r /etc/petclinic`로 지웁니다. 지우기 전에 만든 AMI와 스냅샷에는 비밀번호가 남아 있습니다.
 - 시간대를 `Asia/Seoul`로 두는 이유: 생일·진료 날짜 검증의 "오늘"이 서버 시간대를 따르는데, EC2 기본값(UTC)이면 한국 시간 00~09시에 하루가 어긋납니다.
-- EC2 IAM 역할에 `AmazonSSMManagedInstanceCore`가 필요합니다. SSH(22) 인바운드는 열지 않습니다.
-- 환경 파일은 AMI에 함께 들어가므로 AMI를 다른 계정에 공유하지 않습니다.
+- EC2 IAM 역할에 `AmazonSSMManagedInstanceCore`가 필요합니다. SSM 접속과 Parameter Store 읽기에 함께 쓰입니다. SSH(22) 인바운드는 열지 않습니다.
 
 ## 원본 프로젝트
 

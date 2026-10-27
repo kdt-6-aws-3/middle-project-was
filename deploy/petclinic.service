@@ -6,9 +6,8 @@ Wants=network-online.target
 [Service]
 User=petclinic
 Group=petclinic
-EnvironmentFile=/etc/petclinic/petclinic.env
 Environment=TZ=Asia/Seoul
-ExecStart=/usr/bin/java -Xms256m -Xmx512m -jar /opt/petclinic/petclinic.jar
+ExecStart=/opt/petclinic/start.sh
 SuccessExitStatus=143
 Restart=on-failure
 RestartSec=10
